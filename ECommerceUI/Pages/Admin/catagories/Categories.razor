@@ -1,0 +1,173 @@
+﻿@page "/admin/categories"
+@layout AdminLayout
+@inject CategoryService CategoryService
+
+@inject NavigationManager Navigation
+
+<h2 class="d-flex justify-content-between align-items-center mb-4">
+    <span>Categories</span>
+    <button class="btn btn-primary" @onclick="GoToCreate">
+        + Add New
+    </button>
+</h2>
+
+<!-- SEARCH PANEL -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">Search</div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label class="form-label">Category Name:</label>
+                <select class="form-select" @bind="searchName">
+                    <option value="">All</option>
+
+                    @foreach (var cat in allCategories)
+                    {
+                        <option value="@cat.Name">@cat.Name</option>
+                    }
+                </select>
+
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Published:</label>
+                <select class="form-select" @bind="searchPublished">
+                    <option value="">All</option>
+                    <option value="true">Published</option>
+                    <option value="false">Unpublished</option>
+                </select>
+            </div>
+
+            <div class="col-12 text-center">
+                <button class="btn btn-primary px-4" @onclick="LoadCategories">
+                    Search
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- TABLE -->
+<table class="table table-bordered table-striped">
+    <thead class="table-light">
+        <tr>
+            <th style="width:40px;">
+                <input type="checkbox" />
+            </th>
+
+            <th style="width:120px;">Image</th>
+
+            <th>Name</th>
+
+            <th style="width:150px;">Published</th>
+
+            <th style="width:150px;">Display Order</th>
+
+            <th style="width:120px;">Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        @if (categories == null)
+        {
+            <tr>
+                <td colspan="6" class="text-center">Loading...</td>
+            </tr>
+        }
+        else if (!categories.Any())
+        {
+            <tr>
+                <td colspan="6" class="text-center">No categories found</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var category in categories)
+            {
+                <tr>
+
+                    <td>
+                        <input type="checkbox" />
+                    </td>
+
+                    <!-- IMAGE COLUMN -->
+                    <td>
+                        @if (!string.IsNullOrEmpty(category.ImageUrl))
+                        {
+                            <img src="https://localhost:5001/@category.ImageUrl"
+                                 width="60"
+                                 height="60"
+                                 style="object-fit:cover;border-radius:5px;" />
+                        }
+                    </td>
+
+                    <td>@category.Name</td>
+
+                    <td>
+                        @(category.Published ? "Yes" : "No")
+                    </td>
+
+                    <td>@category.DisplayOrder</td>
+
+                    <td>
+                        <button class="btn btn-sm btn-warning"
+                                @onclick="() => Edit(category.Id)">
+                            Edit
+                        </button>
+                    </td>
+
+                </tr>
+            }
+        }
+
+    </tbody>
+</table>
+
+@code {
+
+    private List<CategoryDto> allCategories = new();
+    private List<CategoryDto> categories = new();
+
+    private string searchName;
+    private string searchPublished;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allCategories = await CategoryService.GetAll();
+        await LoadCategories();
+    }
+
+    async Task LoadCategories()
+    {
+        if (string.IsNullOrEmpty(searchName) &&
+            string.IsNullOrEmpty(searchPublished))
+        {
+            categories = await CategoryService.GetAll();
+            return;
+        }
+
+        bool? publishedValue = null;
+
+        if (!string.IsNullOrEmpty(searchPublished))
+            publishedValue = bool.Parse(searchPublished);
+
+        categories = await CategoryService.Search(new CategorySearchDto
+        {
+            Name = searchName,
+            Published = publishedValue
+        });
+    }
+
+    void GoToCreate()
+    {
+        Navigation.NavigateTo("/admin/categories/create");
+    }
+
+    void Edit(string id)
+    {
+        Navigation.NavigateTo($"/admin/categories/edit/{id}");
+    }
+}

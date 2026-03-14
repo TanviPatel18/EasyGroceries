@@ -1,0 +1,155 @@
+﻿@page "/admin/orders"
+@layout AdminLayout
+@using ECommerceUI.Models.Sales
+@inject OrderService OrderService
+@inject NavigationManager NavigationManager
+
+<h2 class="mb-4">Orders</h2>
+
+<!-- ================= SEARCH ================= -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">
+        Search Orders
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label class="form-label">Order Status</label>
+                <select class="form-select" @bind="searchModel.OrderStatus">
+                    <option value="">All</option>
+                    <option>Placed</option>
+                    <option>Processing</option>
+                    <option>Completed</option>
+                    <option>Cancelled</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Payment Status</label>
+                <select class="form-select" @bind="searchModel.PaymentStatus">
+                    <option value="">All</option>
+                    <option>Pending</option>
+                    <option>Paid</option>
+                    <option>Failed</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Shipping Status</label>
+                <select class="form-select" @bind="searchModel.ShippingStatus">
+                    <option value="">All</option>
+                    <option>Pending</option>
+                    <option>Processing</option>
+                    <option>Shipped</option>
+                    <option>Delivered</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" @bind="searchModel.StartDate" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" @bind="searchModel.EndDate" />
+            </div>
+
+        </div>
+
+        <div class="text-center mt-4">
+            <button class="btn btn-primary me-2" @onclick="SearchOrders">
+                Search
+            </button>
+            <button class="btn btn-secondary" @onclick="LoadOrders">
+                Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= TABLE ================= -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:40px;">
+                        <input type="checkbox" />
+                    </th>
+                    <th>Order #</th>
+                    <th>Status</th>
+                    <th>Payment</th>
+                    <th>Shipping</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                    <th style="width:100px;">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (orders == null || !orders.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            No orders found
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var order in orders)
+                    {
+                        <tr>
+                            <td>
+                                <input type="checkbox" />
+                            </td>
+                            <td>@order.Id</td>
+                            <td>@order.OrderStatus</td>
+                            <td>@order.PaymentStatus</td>
+                            <td>@order.ShippingStatus</td>
+                            <td>₹ @order.OrderTotal</td>
+                            <td>@order.OrderDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning"
+                                        @onclick="() => View(order.Id)">
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+
+        </table>
+    </div>
+</div>
+
+@code {
+
+    private AdminOrderSearchDto searchModel = new();
+    private List<OrderDto> orders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        searchModel = new();
+        orders = await OrderService.GetAll();
+    }
+
+    private async Task SearchOrders()
+    {
+        orders = await OrderService.Search(searchModel);
+    }
+
+    private void View(string id)
+    {
+        NavigationManager.NavigateTo($"/admin/orders/{id}");
+    }
+}

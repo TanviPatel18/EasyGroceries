@@ -1,0 +1,171 @@
+﻿@page "/admin/vendors"
+@layout AdminLayout
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Vendors</h2>
+    <button class="btn btn-primary" @onclick="GoToCreate">
+        <i class="fa-solid fa-plus me-1"></i> Add New
+    </button>
+</div>
+
+<!-- ================= SEARCH FILTER CARD ================= -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">Search / Filter</div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+
+            <!-- Vendor Name -->
+            <div class="col-md-6">
+                <label>Vendor Name:</label>
+                <input class="form-control" @bind="searchName" placeholder="Enter name" />
+            </div>
+
+            <!-- Vendor Email -->
+            <div class="col-md-6">
+                <label>Email:</label>
+                <input class="form-control" @bind="searchEmail" placeholder="Enter email" />
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-12 text-center mt-3">
+                <button class="btn btn-primary px-4" @onclick="SearchVendors">Search</button>
+                <button class="btn btn-outline-secondary px-4 ms-2" @onclick="ResetFilters">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= VENDORS TABLE ================= -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover table-bordered mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th class="text-center">Active</th>
+                    <th style="width: 170px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (vendors == null)
+                {
+                    <tr><td colspan="4" class="text-center py-4">Loading...</td></tr>
+                }
+                else if (!vendors.Any())
+                {
+                    <tr><td colspan="4" class="text-center py-4">No vendors found</td></tr>
+                }
+                else
+                {
+                    @foreach (var v in vendors)
+                    {
+                        <tr>
+                            <td>@v.Name</td>
+                            <td>@v.Email</td>
+                            <td class="text-center">@BoolIcon(v.IsActive)</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm" @onclick="() => Edit(v.Id)">
+                                    Edit
+                                </button>
+                                <button class="btn btn-danger btn-sm ms-2" @onclick="() => Delete(v.Id)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<VendorDto> vendors;
+    private string searchName = "";
+    private string searchEmail = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVendors();
+    }
+
+    private async Task LoadVendors()
+    {
+        vendors = await Http.GetFromJsonAsync<List<VendorDto>>("api/admin/vendors/GetAll")
+                  ?? new List<VendorDto>();
+    }
+
+    private async Task SearchVendors()
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrWhiteSpace(searchName))
+                queryParams.Add($"name={Uri.EscapeDataString(searchName)}");
+            if (!string.IsNullOrWhiteSpace(searchEmail))
+                queryParams.Add($"email={Uri.EscapeDataString(searchEmail)}");
+
+            var url = queryParams.Any()
+                ? $"api/admin/vendors/Search?{string.Join("&", queryParams)}"
+                : "api/admin/vendors/GetAll";
+
+            vendors = await Http.GetFromJsonAsync<List<VendorDto>>(url) ?? new List<VendorDto>();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error searching vendors: " + ex.Message);
+        }
+    }
+
+    private async Task ResetFilters()
+    {
+        searchName = "";
+        searchEmail = "";
+        await LoadVendors();
+    }
+
+    private void GoToCreate() => Navigation.NavigateTo("/admin/vendors/create");
+    private void Edit(string id) => Navigation.NavigateTo($"/admin/vendors/edit/{id}");
+
+    private async Task Delete(string id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this vendor?"))
+            return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/admin/vendors/Delete/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await SearchVendors(); // reload current filters
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", "Error: " + error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + ex.Message);
+        }
+    }
+
+    private string BoolIcon(bool value) => value ? "✔" : "✖";
+
+    public class VendorDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public string ContactPhone { get; set; } = string.Empty;
+        public string CompanyName { get; set; } = string.Empty;
+        public string CustomerRoleId { get; set; } = string.Empty;
+        public string CustomerRoleName { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,84 @@
+﻿@page "/admin/manufacturers/edit/{id}"
+@layout AdminLayout
+@inject ManufacturerService ManufacturerService
+@inject NavigationManager Navigation
+
+@if (model == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Edit Manufacturer</h3>
+
+        <button class="btn btn-secondary" @onclick="GoBack">
+            ← Back to Manufacturers
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+
+            <div class="mb-3">
+                <label>Name</label>
+                <input class="form-control" @bind="model.Name" />
+            </div>
+
+            <div class="mb-3">
+                <label>Display Order</label>
+                <input type="number"
+                       class="form-control"
+                       @bind="model.DisplayOrder" />
+            </div>
+
+            <div class="form-check">
+                <input type="checkbox"
+                       class="form-check-input"
+                       @bind="model.Published" />
+                <label class="form-check-label">Published</label>
+            </div>
+            <div class="text-center mb-5">
+                <button class="btn btn-success px-5" @onclick="Save">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter] public string id { get; set; }
+
+    private ManufacturerDto model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var list = await ManufacturerService.GetAll();
+        model = list.FirstOrDefault(x => x.Id == id);
+    }
+
+    async Task Save()
+    {
+        await ManufacturerService.Update(id, model);
+        Navigation.NavigateTo("/admin/manufacturers?success=updated", true);
+    }
+
+    async Task Delete()
+    {
+        await ManufacturerService.Delete(id);
+        Navigation.NavigateTo("/admin/manufacturers?success=deleted", true);
+    }
+
+    void Cancel()
+    {
+        Navigation.NavigateTo("/admin/manufacturers");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/manufacturers");
+    }
+
+}

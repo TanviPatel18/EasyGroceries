@@ -1,0 +1,286 @@
+﻿@page "/admin/customers"
+@layout AdminLayout
+
+@inject CustomerService CustomerService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@using ECommerceUI.Models.Users
+@using System.Net.Http.Json
+
+<h2 class="d-flex justify-content-between align-items-center mb-4">
+    <span>Customers</span>
+    <button class="btn btn-primary" @onclick="GoToCreate">
+        + Add New
+    </button>
+</h2>
+
+<!-- SEARCH CARD -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">Search</div>
+
+    <div class="card-body">
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label>Email:</label>
+                <input class="form-control" @bind="searchModel.Email" />
+            </div>
+
+            <div class="col-md-6">
+                <label>First Name:</label>
+                <input class="form-control" @bind="searchModel.FirstName" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Last Name:</label>
+                <input class="form-control" @bind="searchModel.LastName" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Phone:</label>
+                <input class="form-control" @bind="searchModel.Phone" />
+            </div>
+
+            <div class="col-md-6">
+                <label>IP Address:</label>
+                <input class="form-control" @bind="searchModel.IpAddress" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Customer Role:</label>
+                <select class="form-select" @bind="searchModel.CustomerRole">
+                    <option value="">All</option>
+                    @foreach (var role in roles.Where(r => r.IsActive))
+                    {
+                        <option value="@role.RoleName">
+                            @role.RoleName
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label>Registration From:</label>
+                <input type="date" class="form-control" @bind="searchModel.RegistrationFrom" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Registration To:</label>
+                <input type="date" class="form-control" @bind="searchModel.RegistrationTo" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Last Activity From:</label>
+                <input type="date" class="form-control" @bind="searchModel.LastActivityFrom" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Last Activity To:</label>
+                <input type="date" class="form-control" @bind="searchModel.LastActivityTo" />
+            </div>
+
+        </div>
+
+        <div class="text-center mt-4">
+            <button class="btn btn-primary px-4 me-2"
+                    @onclick="SearchCustomers">
+                Search
+            </button>
+
+            <button class="btn btn-outline-secondary px-4"
+                    @onclick="ResetFilters">
+                Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- TABLE -->
+<table class="table table-bordered table-hover">
+    <thead class="table-light">
+        <tr>
+            <th style="width:40px;"></th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Role</th>
+            <th>Registered</th>
+            <th style="width:120px;">Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (!customers.Any())
+        {
+            <tr>
+                <td colspan="7" class="text-center">
+                    No customers found
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var item in customers)
+            {
+                <tr>
+                    <td><input type="checkbox" /></td>
+
+                    <td>@item.Email</td>
+                    <td>@item.FirstName @item.LastName</td>
+                    <td>@item.Phone</td>
+                    <td>@item.CustomerRole</td>
+                    <td>@item.RegistrationDate.ToString("dd-MM-yyyy")</td>
+
+                    <td>
+                        <button class="btn btn-warning btn-sm me-1"
+                                @onclick="() => EditCustomer(item.Id)">
+                            Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm"
+                                @onclick="() => OpenDeleteModal(item.Email)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal fade @(showDeleteModal ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+            </div>
+            <div class="modal-body">
+                <p>To delete this customer, please type their email:</p>
+                <input class="form-control" @bind="deleteEmailInput" placeholder="Enter email to confirm" />
+
+                @if (!string.IsNullOrEmpty(deleteError))
+                {
+                    <div class="text-danger mt-2">@deleteError</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                <button class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+
+    private List<CustomerDto> customers = new();
+    private List<CustomerRoleDto> roles = new();
+    private SearchCustomerDto searchModel = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        isLoading = true;
+        customers = await CustomerService.GetAll();
+        isLoading = false;
+    }
+
+    private async Task LoadRoles()
+    {
+        roles = await Http.GetFromJsonAsync<List<CustomerRoleDto>>(
+            "api/admin/customer-roles/GetAll")
+            ?? new List<CustomerRoleDto>();
+    }
+
+    private async Task SearchCustomers()
+    {
+        isLoading = true;
+        customers = await CustomerService.Search(searchModel);
+        isLoading = false;
+    }
+
+    private async Task ResetFilters()
+    {
+        searchModel = new SearchCustomerDto();
+        await LoadCustomers();
+    }
+
+    private async Task DeleteCustomer(string email)
+    {
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Are you sure you want to delete {email}?");
+
+        if (!confirm) return;
+
+        await CustomerService.Delete(email);
+        await LoadCustomers();
+    }
+
+    private void EditCustomer(string id)
+    {
+        Navigation.NavigateTo($"/admin/customers/edit/{id}");
+    }
+
+    private void GoToCreate()
+    {
+        Navigation.NavigateTo("/admin/customers/create");
+    }
+
+
+    // this is all for the delete validation 
+    // Modal state
+    private bool showDeleteModal = false;
+    private string deleteEmailInput = "";
+    private string emailToDelete = "";
+    private string deleteError = "";
+    // Open modal
+    private void OpenDeleteModal(string email)
+    {
+        emailToDelete = email;
+        deleteEmailInput = ""; // reset input
+        deleteError = "";       // reset error
+        showDeleteModal = true;
+    }
+
+    // Close modal
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+    }
+
+    // Confirm delete
+    private async Task ConfirmDelete()
+    {
+        deleteError = ""; // reset error
+
+        if (string.IsNullOrWhiteSpace(deleteEmailInput))
+        {
+            deleteError = "Please enter the email to confirm deletion.";
+            return;
+        }
+
+        if (deleteEmailInput != emailToDelete)
+        {
+            deleteError = "Email does not match! Deletion cancelled.";
+            return;
+        }
+
+        // Delete the customer
+        await CustomerService.Delete(emailToDelete);
+
+        // Reload customer list
+        await LoadCustomers();
+
+        // Close modal
+        showDeleteModal = false;
+    }
+    
+}

@@ -1,0 +1,131 @@
+﻿@inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using ECommerceUI.Models.Catalog
+
+<nav class="shop-navbar">
+
+    <!-- Logo -->
+    <div class="logo" @onclick="GoHome">
+        MyShop
+    </div>
+
+    <!-- Category Dropdown -->
+    <div class="category-menu">
+
+        <span class="menu-title">Categories</span>
+
+        <div class="dropdown">
+
+            @foreach (var category in categories)
+            {
+                <div class="dropdown-item"
+                     @onclick="() => OpenCategory(category.Id)">
+                    @category.Name
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+    <!-- Search -->
+    <div class="search-box">
+
+        <input placeholder="Search products..."
+               @bind="searchText" />
+
+        <button @onclick="SearchProduct">
+            🔍
+        </button>
+
+    </div>
+
+    <!-- Right Menu -->
+    <div class="right-menu">
+
+        @if (role == null)
+        {
+            <span @onclick="GoLogin">
+                Login
+            </span>
+
+            <span @onclick="GoRegister">
+                Register
+            </span>
+        }
+
+        @if (role == "Admin")
+        {
+            <span @onclick="GoAdmin">
+                Admin
+            </span>
+        }
+
+        <span @onclick="GoCart">
+            🛒 Cart
+        </span>
+
+    </div>
+
+</nav>
+
+@code {
+
+    private string? role;
+
+    List<CategoryDto> categories = new();
+
+    string searchText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        role = await JS.InvokeAsync<string>("localStorage.getItem", "role");
+
+        try
+        {
+            categories = await Http.GetFromJsonAsync<List<CategoryDto>>
+            ("api/catalog/categories/GetAll");
+        }
+        catch
+        {
+            Console.WriteLine("Categories API error");
+        }
+    }
+
+    void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    void GoLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    void GoRegister()
+    {
+        Navigation.NavigateTo("/register");
+    }
+
+    void GoAdmin()
+    {
+        Navigation.NavigateTo("/admin/products");
+    }
+
+    void GoCart()
+    {
+        Navigation.NavigateTo("/cart");
+    }
+
+    void OpenCategory(string id)
+    {
+        Navigation.NavigateTo($"/category/{id}");
+    }
+
+    void SearchProduct()
+    {
+        Navigation.NavigateTo($"/search/{searchText}");
+    }
+
+}

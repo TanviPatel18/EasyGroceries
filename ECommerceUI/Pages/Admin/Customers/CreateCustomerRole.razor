@@ -1,0 +1,98 @@
+﻿@page "/admin/customer-roles/create"
+@layout AdminLayout
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Create Customer Role</h2>
+
+    <button class="btn btn-secondary"
+            @onclick="GoBack">
+        ← Back to Role List
+    </button>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+
+        <EditForm Model="model" OnValidSubmit="CreateRole">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <!-- Role Name -->
+            <div class="mb-3">
+                <label class="form-label">Role Name</label>
+                <InputText class="form-control" @bind-Value="model.RoleName" />
+            </div>
+
+            <!-- Free Shipping -->
+            <div class="form-check mb-2">
+                <InputCheckbox class="form-check-input" @bind-Value="model.FreeShipping" />
+                <label class="form-check-label">Free Shipping</label>
+            </div>
+
+            <!-- Tax Exempt -->
+            <div class="form-check mb-2">
+                <InputCheckbox class="form-check-input" @bind-Value="model.TaxExempt" />
+                <label class="form-check-label">Tax Exempt</label>
+            </div>
+
+            <!-- System Role -->
+            <div class="form-check mb-3">
+                <InputCheckbox class="form-check-input" @bind-Value="model.IsSystemRole" />
+                <label class="form-check-label">System Role</label>
+            </div>
+
+        </EditForm>
+
+    </div>
+</div>
+
+<!-- ================= SAVE BUTTON ================= -->
+<div class="text-center mb-5">
+    <button class="btn btn-primary px-5"
+            @onclick="CreateRole">
+        Save
+    </button>
+</div>
+
+@code {
+    private CreateCustomerRoleDto model = new();
+
+    private async Task CreateRole()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "api/admin/customer-roles/Create", model);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/admin/customer-roles");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + ex.Message);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/customer-roles");
+    }
+
+    public class CreateCustomerRoleDto
+    {
+        public string RoleName { get; set; } = string.Empty;
+        public bool FreeShipping { get; set; }
+        public bool TaxExempt { get; set; }
+        public bool IsSystemRole { get; set; }
+    }
+}

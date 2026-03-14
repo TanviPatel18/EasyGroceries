@@ -1,0 +1,93 @@
+﻿h3 {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+    .card h5 {
+        font-weight: 600;
+        color: #34495e;
+        margin-bottom: 15px;
+    }
+
+hr {
+    margin: 25px 0;
+    border-top: 1px solid #e5e5e5;
+}
+
+label {
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #555;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #dcdcdc;
+    padding: 8px 12px;
+    transition: all 0.2s ease-in-out;
+}
+
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 5px rgba(78, 115, 223, 0.3);
+    }
+
+textarea.form-control {
+    resize: none;
+}
+
+input[type="checkbox"] {
+    transform: scale(1.2);
+}
+
+.btn-primary {
+    background-color: #4e73df;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+    .btn-primary:hover {
+        background-color: #2e59d9;
+    }
+
+.alert-info {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.row {
+    margin-bottom: 10px;
+}
+
+/* Make card look like admin panel */
+.card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Section spacing */
+h5 {
+    padding-top: 10px;
+}
+
+/* Dropdown styling */
+select.form-control {
+    cursor: pointer;
+}
+
+/* Smooth layout spacing */
+.mt-3 {
+    margin-top: 1rem !important;
+}
+
+.mt-4 {
+    margin-top: 1.5rem !important;
+}

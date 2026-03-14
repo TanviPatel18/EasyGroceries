@@ -1,0 +1,153 @@
+﻿@page "/admin/orders/{id}"
+@layout AdminLayout
+@using ECommerceUI.Models.Sales
+@inject OrderService OrderService
+@inject NavigationManager Navigation
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h3 class="mb-0">
+    Edit order details - @order?.Id
+        <button class="btn btn-secondary" @onclick="GoBack">
+            ← Back to Oder
+        </button>
+</h3>
+</div>
+
+@if (order == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <!-- INFO -->
+    <div class="card mb-4">
+        <div class="card-header fw-bold">Info</div>
+        <div class="card-body">
+
+            <p><strong>Order #:</strong> @order.Id</p>
+            <p><strong>Created on:</strong> @order.OrderDate</p>
+            <p><strong>Customer ID:</strong> @order.CustomerId</p>
+
+            <p>
+                <strong>Order Status:</strong>
+                <span class="badge bg-success">@order.OrderStatus</span>
+            </p>
+
+            <p>
+                <strong>Payment Status:</strong>
+                <span class="badge bg-info">@order.PaymentStatus</span>
+            </p>
+
+            <p>
+                <strong>Shipping Status:</strong>
+                <span class="badge bg-warning">@order.ShippingStatus</span>
+            </p>
+
+            <hr />
+
+            <p><strong>Total:</strong> ₹ @order.OrderTotal</p>
+
+        </div>
+    </div>
+
+    <!-- BILLING & SHIPPING -->
+    <div class="card mb-4">
+        <div class="card-header fw-bold">Billing & Shipping</div>
+        <div class="card-body">
+
+            <div class="row g-4">
+
+                <!-- Billing Card -->
+                <div class="col-md-6">
+                    <div class="address-card">
+                        <div class="address-title">
+                            Billing Address
+                        </div>
+
+                        <div class="address-content">
+                            <p><strong>@order.BillingAddress?.FullName</strong></p>
+                            <p>@order.BillingAddress?.PhoneNumber</p>
+                            <p>@order.BillingAddress?.Address</p>
+                            <p>@order.BillingAddress?.City</p>
+                            <p>@order.BillingAddress?.ZipCode</p>
+                            <p>@order.BillingAddress?.Country</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Card -->
+                <div class="col-md-6">
+                    <div class="address-card">
+                        <div class="address-title">
+                            Shipping Address
+                        </div>
+
+                        <div class="address-content">
+                            <p><strong>@order.ShippingAddress?.FullName</strong></p>
+                            <p>@order.ShippingAddress?.PhoneNumber</p>
+                            <p>@order.ShippingAddress?.Address</p>
+                            <p>@order.ShippingAddress?.City</p>
+                            <p>@order.ShippingAddress?.ZipCode</p>
+                            <p>@order.ShippingAddress?.Country</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="card">
+        <div class="card-header fw-bold">Products</div>
+        <div class="card-body">
+
+            @if (order.Products == null || !order.Products.Any())
+            {
+                <p>No products found</p>
+            }
+            else
+            {
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Products)
+                        {
+                            <tr>
+                                <td>@item.ProductName</td>
+                                <td>₹ @item.Price</td>
+                                <td>@item.Quantity</td>
+                                <td>₹ @(item.Price* item.Quantity)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter] public string id { get; set; }
+
+    OrderDetailsDto? order;
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await OrderService.GetById(id);
+    }
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/admin/orders");
+    }
+}

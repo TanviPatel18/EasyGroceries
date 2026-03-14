@@ -1,0 +1,249 @@
+﻿@page "/admin/shipments"
+@layout AdminLayout
+@using ECommerceUI.Models.Sales
+@inject ShipmentService ShipmentService
+@inject NavigationManager NavigationManager
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2 class="mb-0">
+        Shipments
+    </h2>
+
+    <div class="d-flex gap-2">
+
+        <button class="btn btn-primary"
+                @onclick="ShipSelected"
+                disabled="@string.IsNullOrEmpty(selectedShipmentId)">
+            Set as Shipped
+        </button>
+
+        <button class="btn btn-success"
+                @onclick="DeliverSelected"
+                disabled="@string.IsNullOrEmpty(selectedShipmentId)">
+            Set as Delivered
+        </button>
+
+    </div>
+
+</div>
+
+<!-- ================= SEARCH ================= -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">
+        Search Shipments
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3">
+
+            <div class="col-md-4">
+                <label class="form-label">Order Id</label>
+                <input class="form-control" @bind="searchModel.OrderId" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Tracking Number</label>
+                <input class="form-control" @bind="searchModel.TrackingNumber" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="searchModel.Status">
+                    <option value="">All</option>
+                    <option>Pending</option>
+                    <option>Shipped</option>
+                    <option>Delivered</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Shipping Method</label>
+                <input class="form-control" @bind="searchModel.ShippingMethod" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" @bind="searchModel.StartDate" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" @bind="searchModel.EndDate" />
+            </div>
+
+        </div>
+
+        <div class="text-center mt-4">
+            <button class="btn btn-primary me-2" @onclick="SearchShipments">
+                Search
+            </button>
+            <button class="btn btn-secondary" @onclick="LoadShipments">
+                Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= TABLE ================= -->
+<div class="card">
+    <div class="table-responsive" style="overflow-x:auto;">
+        <table class="table table-bordered table-hover align-middle text-nowrap">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:40px;"></th>
+                    <th>Shipment #</th>
+                    <th>Order #</th>
+                    <th>Status</th>
+                    @* <th>Shipping Method</th> *@
+                    <th>Tracking Number</th>
+                    @* <th>Shipping Cost</th> *@
+                    <th>Date Shipped</th>
+                    <th>Date Delivered</th>
+                    @* <th>Created On</th> *@
+                    <th class="text-center">View</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (shipments == null || !shipments.Any())
+                {
+                    <tr>
+                        <td colspan="11" class="text-center">
+                            No shipments found
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var shipment in shipments)
+                    {
+                        <tr class="@(shipment.Id == selectedShipmentId ? "table-active" : "")">
+
+                            <!-- Checkbox -->
+                            <td>
+                                <input type="checkbox"
+                                       checked="@(shipment.Id == selectedShipmentId)"
+                                       @onchange="() => SelectShipment(shipment.Id)" />
+                            </td>
+
+                            <td>@shipment.Id</td>
+                            <td>@shipment.OrderId</td>
+
+                            <td>
+                                <span class="badge
+                                            @(shipment.Status == "Delivered" ? "bg-success" :
+                                                                            shipment.Status == "Shipped" ? "bg-primary" :
+                                                                            "bg-secondary")">
+                                    @shipment.Status
+                                </span>
+                            </td>
+
+                            @* <td>@shipment.ShippingMethod</td> *@
+                            <td>@shipment.TrackingNumber</td>
+                            @* <td>₹ @shipment.ShippingCost</td> *@
+
+                            <td>
+                                @(shipment.ShippedDate?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "-")
+                            </td>
+
+                            <td>
+                                @(shipment.DeliveredDate?.ToString("dd MMM yyyy HH:mm") ?? "-")
+                            </td>
+
+                            @* <td>
+                                @shipment.CreatedOn.ToString("dd MMM yyyy")
+                            </td> *@
+
+                            <!-- View Button -->
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => ViewShipment(shipment.Id)">
+                                    View
+                                </button>
+                            </td>
+
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Selected Info -->
+@if (!string.IsNullOrEmpty(selectedShipmentId))
+{
+    <div class="alert alert-info mt-3">
+        Selected Shipment: @selectedShipmentId
+    </div>
+}
+
+@code {
+
+    private ShipmentSearchDto searchModel = new();
+    private List<ShipmentDto> shipments = new();
+    private string? selectedShipmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadShipments();
+    }
+
+    private async Task LoadShipments()
+    {
+        searchModel = new();
+        shipments = await ShipmentService.GetAll();
+        selectedShipmentId = null;
+    }
+
+    private async Task SearchShipments()
+    {
+        shipments = await ShipmentService.Search(searchModel);
+        selectedShipmentId = null;
+    }
+
+    private void SelectShipment(string id)
+    {
+        if (selectedShipmentId == id)
+            selectedShipmentId = null;
+        else
+            selectedShipmentId = id;
+    }
+
+    private async Task ShipSelected()
+    {
+        if (string.IsNullOrEmpty(selectedShipmentId))
+            return;
+
+        await ShipmentService.MarkAsShipped(selectedShipmentId);
+
+        var shipment = shipments.FirstOrDefault(x => x.Id == selectedShipmentId);
+        if (shipment != null)
+            shipment.Status = "Shipped";
+
+        selectedShipmentId = null;
+        await LoadShipments();
+    }
+
+    private async Task DeliverSelected()
+    {
+        if (string.IsNullOrEmpty(selectedShipmentId))
+            return;
+
+        await ShipmentService.MarkAsDelivered(selectedShipmentId);
+
+        var shipment = shipments.FirstOrDefault(x => x.Id == selectedShipmentId);
+        if (shipment != null)
+            shipment.Status = "Delivered";
+
+        selectedShipmentId = null;
+        await LoadShipments();
+    }
+
+    private void ViewShipment(string id)
+    {
+        NavigationManager.NavigateTo($"/admin/shipments/{id}");
+    }
+
+}

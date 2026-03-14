@@ -1,0 +1,83 @@
+﻿@page "/register"
+@layout AuthLayout
+@inject NavigationManager Navigation
+@inject ECommerceUI.Services.AuthService AuthService
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <h2 class="auth-main-title">CREATE NEW ACCOUNT</h2>
+
+        <div class="auth-body">
+
+            <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="auth-input">
+                    <span class="icon">👤</span>
+                    <InputText @bind-Value="registerModel.FirstName"
+                               placeholder="First Name" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">👤</span>
+                    <InputText @bind-Value="registerModel.LastName"
+                               placeholder="Last Name" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">✉</span>
+                    <InputText @bind-Value="registerModel.Email"
+                               placeholder="Email" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">📱</span>
+                    <InputText @bind-Value="registerModel.Phone"
+                               placeholder="Phone" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">🔒</span>
+                    <InputText @bind-Value="registerModel.Password"
+                               type="password"
+                               placeholder="Password" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">🔒</span>
+                    <InputText @bind-Value="registerModel.ConfirmPassword"
+                               type="password"
+                               placeholder="Confirm Password" />
+                </div>
+
+                <div class="auth-button-area">
+                    <button class="auth-btn">REGISTER</button>
+                </div>
+
+                <div style="text-align:center;margin-top:10px;">
+                    <a href="/login">Already have account? Login</a>
+                </div>
+
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private RegisterModel registerModel = new();
+
+    private async Task HandleRegister()
+    {
+        if (registerModel.Password != registerModel.ConfirmPassword)
+            return;
+
+        var success = await AuthService.RegisterAsync(registerModel);
+
+        if (success)
+            Navigation.NavigateTo("/login");
+    }
+}

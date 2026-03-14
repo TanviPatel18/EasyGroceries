@@ -1,0 +1,112 @@
+﻿@page "/admin/customers/gdpr-requests/edit/{RequestId}"
+@layout AdminLayout
+@using ECommerceUI.Models.Users
+@using ECommerceUI.Services.Customer
+@inject GdprRequestService GdprRequestService
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Update GDPR Request</h2>
+
+    <button class="btn btn-secondary" @onclick="GoBack">
+        ← Back to GDPR Requests
+    </button>
+</div>
+
+@if (request == null)
+{
+    <div class="text-center mt-5">Loading...</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label>Customer Email</label>
+                <input class="form-control" value="@request.CustomerEmail" disabled />
+            </div>
+            <div class="mb-3">
+                <label>Request Type</label>
+                <input class="form-control" value="@request.RequestType" disabled />
+            </div>
+            <div class="mb-3">
+                <label>Request Details</label>
+                <textarea class="form-control" rows="3" @bind="request.RequestDetails"></textarea>
+            </div>
+            <div class="mb-3">
+                <label>Status</label>
+                <select class="form-select" @bind="request.Status">
+                    @foreach (var status in statusOptions)
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+            </div>
+
+            @if (!string.IsNullOrEmpty(updateError))
+            {
+                <div class="text-danger">@updateError</div>
+            }
+
+            <div class="text-center mb-5">
+                <button class="btn btn-primary px-5" @onclick="UpdateRequest">
+                    Update
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string RequestId { get; set; } = string.Empty;
+
+    private GdprRequestDto? request;
+    private string updateError = "";
+    private List<string> statusOptions = new() { "Pending", "Processed", "Rejected" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRequest();
+    }
+
+    private async Task LoadRequest()
+    {
+        // Get all requests from service
+        var allRequests = await GdprRequestService.GetAll();
+
+        // Find the request by ID
+        request = allRequests.FirstOrDefault(r => r.Id == RequestId);
+
+        if (request == null)
+        {
+            updateError = "Request not found.";
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/admin/customers/gdpr-requests");
+    }
+
+    private async Task UpdateRequest()
+    {
+        updateError = "";
+
+        if (request == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(request.Status))
+        {
+            updateError = "Please select a status.";
+            return;
+        }
+
+        await GdprRequestService.UpdateStatus(request.Id, request.Status);
+        Navigation.NavigateTo("/admin/customers/gdpr-requests");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/customers/gdpr-requests");
+    }
+}

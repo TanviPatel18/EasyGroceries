@@ -1,0 +1,88 @@
+﻿@page "/admin/categories/create"
+@layout AdminLayout
+@inject CategoryService CategoryService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h3>Add New Category</h3>
+
+<div class="card">
+    <div class="card-body">
+
+        <div class="mb-3">
+            <label>Category Name</label>
+            <input class="form-control" @bind="model.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label>Display Order</label>
+            <input type="number" class="form-control" @bind="model.DisplayOrder" />
+        </div>
+
+        <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" @bind="model.Published" />
+            <label class="form-check-label">Published</label>
+        </div>
+
+        <!-- IMAGE UPLOAD -->
+        <div class="mb-3">
+            <label>Category Image</label>
+            <InputFile OnChange="UploadImage" />
+
+            @if (!string.IsNullOrEmpty(model.ImageUrl))
+            {
+                <div class="mt-2">
+                    <img src="https://localhost:5001/@model.ImageUrl"
+                         width="120"
+                         style="border-radius:6px;" />
+                </div>
+            }
+        </div>
+
+        <button class="btn btn-success" @onclick="Save">
+            Save
+        </button>
+
+    </div>
+</div>
+
+@code {
+
+    private CreateCategoryDto model = new();
+
+    async Task UploadImage(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        var content = new MultipartFormDataContent();
+
+        var stream = file.OpenReadStream(10 * 1024 * 1024);
+
+        content.Add(
+            new StreamContent(stream),
+            "file",
+            file.Name
+        );
+
+        var response = await Http.PostAsync(
+            "api/admin/categoryimage/upload",
+            content);
+
+        var result = await response.Content.ReadFromJsonAsync<ImageResponse>();
+
+        model.ImageUrl = result.imageUrl;
+    }
+
+    async Task Save()
+    {
+        await CategoryService.Create(model);
+
+        Navigation.NavigateTo("/admin/categories");
+    }
+
+    class ImageResponse
+    {
+        public string imageUrl { get; set; }
+    }
+
+}

@@ -1,0 +1,115 @@
+﻿@page "/admin/customer-roles"
+@layout AdminLayout
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2 class="d-flex justify-content-between align-items-center mb-4">
+    <span>Customer Roles</span>
+    <button class="btn btn-primary" @onclick="GoToCreate">
+        <i class="fa-solid fa-plus me-1"></i> Add New
+    </button>
+</h2>
+
+<!-- TABLE -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+
+        <table class="table table-hover table-bordered mb-0 align-middle">
+
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th class="text-center">Free Shipping</th>
+                    <th class="text-center">Tax Exempt</th>
+                    <th class="text-center">Active</th>
+                    <th class="text-center">System Role</th>
+                    <th style="width:170px;">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @if (!roles.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            No roles found
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var r in roles)
+                    {
+                        <tr>
+                            <td>@r.RoleName</td>
+                            <td class="text-center">@BoolIcon(r.FreeShipping)</td>
+                            <td class="text-center">@BoolIcon(r.TaxExempt)</td>
+                            <td class="text-center">@BoolIcon(r.IsActive)</td>
+                            <td class="text-center">@BoolIcon(r.IsSystemRole)</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm"
+                                        @onclick="() => Edit(r.Id)">
+                                    Edit
+                                </button>
+
+                                <button class="btn btn-danger btn-sm ms-2"
+                                        @onclick="() => Delete(r.Id)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+</div>
+
+@code {
+
+    private List<RoleDto> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        roles = await Http.GetFromJsonAsync<List<RoleDto>>(
+            "api/admin/customer-roles/GetAll");
+    }
+
+    string BoolIcon(bool value)
+        => value ? "✔" : "✖";
+
+    private void GoToCreate()
+    {
+        Navigation.NavigateTo("/admin/customer-roles/create");
+    }
+
+    private void Edit(string id)
+    {
+        Navigation.NavigateTo($"/admin/customer-roles/edit/{id}");
+    }
+
+    private async Task Delete(string id)
+    {
+        await Http.DeleteAsync($"api/admin/customer-roles/Delete/{id}");
+        await LoadData();
+    }
+
+    public class RoleDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public bool FreeShipping { get; set; }
+        public bool TaxExempt { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsSystemRole { get; set; }
+    }
+}

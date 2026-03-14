@@ -1,0 +1,85 @@
+﻿@page "/admin/customers/gdpr-requests/create"
+@layout AdminLayout
+@using ECommerceUI.Models.Users
+@using ECommerceUI.Services.Customer
+@inject GdprRequestService GdprRequestService
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Create GDPR Request</h2>
+
+    <button class="btn btn-secondary"
+            @onclick="GoBack">
+        ← Back to GDPR Requests
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="mb-3">
+            <label>Customer ID</label>
+            <input class="form-control" @bind="newRequest.CustomerId" placeholder="Customer ID" />
+        </div>
+        <div class="mb-3">
+            <label>Customer Email</label>
+            <input class="form-control" @bind="newRequest.CustomerEmail" placeholder="Customer Email" />
+        </div>
+        <div class="mb-3">
+            <label>Request Type</label>
+            <select class="form-select" @bind="newRequest.RequestType">
+                <option value="">Select type</option>
+                @foreach (var rt in requestTypes)
+                {
+                    <option value="@rt">@rt</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Request Details</label>
+            <textarea class="form-control" rows="3" @bind="newRequest.RequestDetails"></textarea>
+        </div>
+
+        @if (!string.IsNullOrEmpty(createError))
+        {
+            <div class="text-danger">@createError</div>
+        }
+
+        <div class="text-center mb-5">
+            <button class="btn btn-primary px-5" @onclick="CreateRequest">
+                Create
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateGdprRequestDto newRequest = new();
+    private string createError = "";
+    private List<string> requestTypes = new() { "Data Export", "Data Deletion", "Data Rectification" };
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/admin/customers/gdpr-requests");
+    }
+
+    private async Task CreateRequest()
+    {
+        createError = "";
+
+        if (string.IsNullOrWhiteSpace(newRequest.CustomerId) ||
+            string.IsNullOrWhiteSpace(newRequest.CustomerEmail) ||
+            string.IsNullOrWhiteSpace(newRequest.RequestType))
+        {
+            createError = "Please fill all required fields.";
+            return;
+        }
+
+        await GdprRequestService.Create(newRequest);
+        Navigation.NavigateTo("/admin/gdpr-requests");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/gdpr-requests");
+    }
+}

@@ -1,0 +1,194 @@
+﻿@page "/admin/customers/create"
+@layout AdminLayout
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+@using ECommerceUI.Models.Users
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Add a new customer</h2>
+
+    <button class="btn btn-secondary"
+            @onclick="GoBack">
+        ← Back to Customer List
+    </button>
+</div>
+
+<!-- ================= CUSTOMER INFO CARD ================= -->
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold">
+        Customer info
+    </div>
+
+    <div class="card-body">
+
+        <div class="row g-3">
+
+            <!-- Email -->
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input class="form-control"
+                       @bind="model.Email" />
+            </div>
+
+            <!-- Password -->
+            <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <input type="password"
+                       class="form-control"
+                       @bind="model.Password" />
+            </div>
+
+            <!-- First Name -->
+            <div class="col-md-6">
+                <label class="form-label">First name</label>
+                <input class="form-control"
+                       @bind="model.FirstName" />
+            </div>
+
+            <!-- Last Name -->
+            <div class="col-md-6">
+                <label class="form-label">Last name</label>
+                <input class="form-control"
+                       @bind="model.LastName" />
+            </div>
+
+            <!-- Phone -->
+            <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input class="form-control"
+                       @bind="model.Phone" />
+            </div>
+
+            <!-- Tax Exempt -->
+            <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check mt-4">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           @bind="model.IsTaxExempt" />
+                    <label class="form-check-label">
+                        Is tax exempt
+                    </label>
+                </div>
+            </div>
+
+            <!-- Newsletter -->
+            <div class="col-md-6">
+                <label class="form-label">Newsletter</label>
+                <input class="form-control"
+                       @bind="model.Newsletter" />
+            </div>
+
+            <!-- Customer Roles -->
+            <div class="col-md-6">
+                <label class="form-label">
+                    Customer roles *
+                </label>
+
+                <select class="form-select"
+                        @bind="model.CustomerRole">
+                    <option value="">-- Select a role --</option> <!-- placeholder -->
+                    @foreach (var role in roles.Where(r => r.IsActive))
+                    {
+                        <option value="@role.RoleName">@role.RoleName</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Vendor Manager -->
+            <div class="col-md-6">
+                <label class="form-label">
+                    Manager of vendor
+                </label>
+
+                <select class="form-select"
+                        @bind="model.Vendor">
+
+                    <option value="">Not a vendor</option>
+                    <option value="Vendor1">Vendor 1</option>
+                    <option value="Vendor2">Vendor 2</option>
+
+                </select>
+
+                <small class="text-muted">
+                    Note: if you have a vendor associated with this customer, then also ensure it is in "Vendors" customer role.
+                </small>
+            </div>
+
+            <!-- Active -->
+            <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check mt-4">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           @bind="model.IsActive" />
+                    <label class="form-check-label">
+                        Active
+                    </label>
+                </div>
+            </div>
+
+            <!-- Admin Comment -->
+            <div class="col-md-12">
+                <label class="form-label">Admin comment</label>
+                <textarea class="form-control"
+                          rows="4"
+                          @bind="model.AdminComment">
+                </textarea>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= SAVE BUTTON ================= -->
+
+<div class="text-center mb-5">
+    <button class="btn btn-primary px-5"
+            @onclick="Save">
+        Save
+    </button>
+</div>
+
+@code {
+
+    private CreateCustomerDto model = new();
+    private List<CustomerRoleDto> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        roles = await Http.GetFromJsonAsync<List<CustomerRoleDto>>(
+            "api/admin/customer-roles/GetAll")
+            ?? new List<CustomerRoleDto>();
+    }
+
+    private async Task Save()
+    {
+        var response = await Http.PostAsJsonAsync(
+            "api/users/customers/create",
+            model);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/admin/customers");
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine("ERROR FROM API: " + error);
+            await JS.InvokeVoidAsync("alert", error);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/customers");
+    }
+}

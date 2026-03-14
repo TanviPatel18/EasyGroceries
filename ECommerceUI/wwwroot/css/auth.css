@@ -1,0 +1,200 @@
+﻿/* ===============================
+   AUTH PAGE WRAPPER
+=================================*/
+
+.auth-page {
+    background: #efefef;
+    min-height: 100vh;
+    padding-top: 60px;
+}
+
+/* ===============================
+   AUTH CARD
+=================================*/
+
+.auth-card {
+    width: 950px;
+    margin: auto;
+    background: #f5f5f5;
+    padding: 40px;
+}
+
+.auth-main-title {
+    text-align: center;
+    font-weight: 300;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+    color: #9a9a9a;
+}
+
+/* ===============================
+   TABS (LOGIN / REGISTER)
+=================================*/
+
+.auth-tabs {
+    display: flex;
+    background: #e5e5e5;
+}
+
+    .auth-tabs .tab {
+        flex: 1;
+        padding: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        color: #777;
+        text-transform: uppercase;
+        text-align: center;
+        transition: 0.3s;
+    }
+
+        .auth-tabs .tab:hover {
+            background: #dcdcdc;
+        }
+
+        .auth-tabs .tab.active {
+            background: #f5f5f5;
+            border-bottom: 3px solid #f5f5f5;
+        }
+
+/* ===============================
+   FORM BODY
+=================================*/
+
+.auth-body {
+    background: #f5f5f5;
+    padding: 50px 150px;
+}
+
+/* ===============================
+   INPUT STYLE
+=================================*/
+
+.auth-input {
+    display: flex;
+    align-items: center;
+    background: #dcdcdc;
+    margin-bottom: 25px;
+}
+
+    .auth-input .icon {
+        width: 60px;
+        text-align: center;
+        background: #cfcfcf;
+        padding: 16px 0;
+        font-size: 18px;
+    }
+
+    .auth-input input {
+        border: none;
+        background: transparent;
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+    }
+
+        .auth-input input:focus {
+            outline: none;
+        }
+
+/* ===============================
+   OPTIONS (Remember / Forgot)
+=================================*/
+
+.auth-options {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 35px;
+    font-size: 14px;
+    color: #666;
+}
+
+    .auth-options a {
+        color: #444;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+        .auth-options a:hover {
+            text-decoration: underline;
+        }
+
+/* ===============================
+   BUTTON
+=================================*/
+
+.auth-button-area {
+    text-align: center;
+}
+
+.auth-btn {
+    width: 320px;
+    padding: 18px;
+    background: #777;
+    border: none;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+    .auth-btn:hover {
+        background: #5f5f5f;
+    }
+
+/* ===============================
+   SUCCESS / ERROR MESSAGE
+=================================*/
+
+.auth-message {
+    padding: 12px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    text-align: center;
+    border-radius: 4px;
+}
+
+    .auth-message.success {
+        background: #e6f4ea;
+        color: #1e7e34;
+    }
+
+    .auth-message.error {
+        background: #fdecea;
+        color: #b02a37;
+    }
+
+/* ===============================
+   REGISTER LINK
+=================================*/
+
+.register-link {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+    .register-link a {
+        color: #0071c1;
+        text-decoration: none;
+        margin-left: 5px;
+    }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+/* ===============================
+   RESPONSIVE
+=================================*/
+
+@media (max-width: 992px) {
+    .auth-card {
+        width: 90%;
+    }
+
+    .auth-body {
+        padding: 30px;
+    }
+}

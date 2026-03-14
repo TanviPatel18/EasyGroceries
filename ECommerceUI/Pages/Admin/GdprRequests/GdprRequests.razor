@@ -1,0 +1,115 @@
+﻿@page "/admin/gdpr-requests"
+@layout AdminLayout
+@using ECommerceUI.Models.Users
+@using ECommerceUI.Services.Customer
+@inject GdprRequestService GdprRequestService
+@inject NavigationManager Navigation
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">GDPR Requests (Log)</h2>
+
+    <button class="btn btn-success" @onclick="GoToCreatePage">
+        + Add New Request
+    </button>
+</div>
+
+<!-- Search Section -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">Search</div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label>Email:</label>
+                <input class="form-control" @bind="searchEmail" placeholder="Enter email" />
+            </div>
+
+            <div class="col-md-6">
+                <label>Request Type:</label>
+                <select class="form-select" @bind="searchRequestType">
+                    <option value="">All</option>
+                    @foreach (var type in requestTypes)
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12 text-center mt-3">
+                <button class="btn btn-primary px-4" @onclick="SearchRequests">Search</button>
+                <button class="btn btn-outline-secondary px-4 ms-2" @onclick="ResetFilters">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GDPR Requests Table -->
+<table class="table table-bordered table-hover">
+    <thead class="table-light">
+        <tr>
+            <th>Customer Email</th>
+            <th>Request Type</th>
+            <th>Request Details</th>
+            <th>Request Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (gdprRequests == null)
+        {
+            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+        }
+        else if (!gdprRequests.Any())
+        {
+            <tr><td colspan="5" class="text-center">No GDPR requests found</td></tr>
+        }
+        else
+        {
+            @foreach (var req in gdprRequests)
+            {
+                <tr>
+                    <td>@req.CustomerEmail</td>
+                    <td>@req.RequestType</td>
+                    <td>@req.RequestDetails</td>
+                    <td>@req.RequestDate.ToLocalTime():dd-MM-yyyy HH:mm</td>
+                    <td>@req.Status</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<GdprRequestDto> gdprRequests;
+    private string searchEmail = "";
+    private string searchRequestType = "";
+    private readonly List<string> requestTypes = new() { "Data Export", "Data Deletion", "Data Rectification" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRequests();
+    }
+
+    private async Task LoadRequests()
+    {
+        gdprRequests = await GdprRequestService.GetAll() ?? new List<GdprRequestDto>();
+    }
+
+    private async Task SearchRequests()
+    {
+        gdprRequests = string.IsNullOrWhiteSpace(searchEmail) && string.IsNullOrWhiteSpace(searchRequestType)
+            ? await GdprRequestService.GetAll() ?? new List<GdprRequestDto>()
+            : await GdprRequestService.Search(searchEmail, searchRequestType) ?? new List<GdprRequestDto>();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchEmail = "";
+        searchRequestType = "";
+        await LoadRequests();
+    }
+
+    private void GoToCreatePage()
+    {
+        Navigation.NavigateTo("/admin/customers/gdpr-requests/create");
+    }
+}

@@ -1,0 +1,207 @@
+﻿@inherits LayoutComponentBase
+
+<div class="admin-wrapper">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+        <!-- LOGO -->
+        <div class="logo">
+            <i class="fas fa-store"></i>
+            <span>ECommerce</span>
+        </div>
+
+        <ul class="menu">
+
+            <!-- Dashboard -->
+            <li>
+                <NavLink href="/admin/dashboard" class="menu-link">
+                    <i class="fas fa-gauge"></i>
+                    <span>Dashboard</span>
+                </NavLink>
+            </li>
+
+            <!-- ================= CATALOG ================= -->
+            <li>
+
+                <div class="dropdown-toggle" @onclick="ToggleCatalog">
+                    <div class="left">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Catalog</span>
+                    </div>
+                </div>
+
+                @if (catalogOpen)
+                {
+                    <ul class="submenu no-gap">
+
+                        <li>
+                            <NavLink href="/admin/products" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Products</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/categories" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Categories</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/manufacturers" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Manufacturers</span>
+                            </NavLink>
+                        </li>
+
+                    </ul>
+                }
+
+            </li>
+            <!-- ================= SALES ================= -->
+            <li>
+
+                <div class="dropdown-toggle" @onclick="ToggleSales">
+                    <div class="left">
+                        <i class="fas fa-cart-shopping"></i>
+                        <span>Sales</span>
+                    </div>
+                </div>
+               
+
+                @if (salesOpen)
+                {
+                    <ul class="submenu no-gap">
+
+                        <li>
+                            <NavLink href="/admin/orders" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Orders</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/shipments" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Shipments</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/returnrequests" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Return Requests</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/recurring-payments" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Recurring Payments</span>
+                            </NavLink>
+                        </li>
+
+                    </ul>
+                }
+
+            </li>
+
+            <!-- ================= CUSTOMERS ================= -->
+            <li>
+
+                <div class="dropdown-toggle" @onclick="ToggleCustomers">
+                    <div class="left">
+                        <i class="fas fa-users"></i>
+                        <span>Customers</span>
+                    </div>
+                </div>
+
+                @if (customersOpen)
+                {
+                    <ul class="submenu no-gap">
+
+                        <li>
+                            <NavLink href="/admin/customers" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Customer </span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/customer-roles" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Customer Roles</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/gdpr-requests" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>GDPR Requests</span>
+                            </NavLink>
+                        </li>
+
+                        <li>
+                            <NavLink href="/admin/vendors" class="menu-link sub-item">
+                                <i class="nav-icon far fa-dot-circle"></i>
+                                <span>Vendors</span>
+                            </NavLink>
+                        </li>
+
+                    </ul>
+                }
+
+            </li>
+
+        </ul>
+
+    </div>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <div class="main-content">
+
+        <div class="topbar">
+
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search..." />
+            </div>
+
+            <div class="top-right">
+                <a href="/">Public Store</a>
+                <a href="/login">Logout</a>
+            </div>
+
+        </div>
+
+        <div class="content">
+            @Body
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+
+    bool catalogOpen = true;
+    bool salesOpen = true;      // ✅ ADD THIS
+    bool customersOpen = false;
+
+    void ToggleCatalog()
+    {
+        catalogOpen = !catalogOpen;
+    }
+
+    void ToggleSales()          // ✅ ADD THIS
+    {
+        salesOpen = !salesOpen;
+    }
+
+    void ToggleCustomers()
+    {
+        customersOpen = !customersOpen;
+    }
+}

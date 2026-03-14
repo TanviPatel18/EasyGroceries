@@ -1,0 +1,384 @@
+﻿@page "/admin/products/create"
+@layout AdminLayout
+@using ECommerceUI.Models.Catalog.Enums
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@using ECommerceUI.Models.Catalog
+@inject HttpClient Http
+
+<!-- BACK BUTTON -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">Add New Product</h3>
+
+    <button class="btn btn-secondary" @onclick="GoBack">
+        ← Back to Products
+    </button>
+</div>
+<EditForm Model="product" OnValidSubmit="SaveProduct">
+    <DataAnnotationsValidator />
+
+    <!-- ================= BASIC INFORMATION ================= -->
+    <div class="card p-4 mb-4">
+
+        <h5>Basic Information</h5>
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <label>Product Name *</label>
+                <InputText class="form-control"
+                           @bind-Value="product.ProductName" />
+            </div>
+
+            <div class="col-md-6">
+                <label>SKU</label>
+                <InputText class="form-control"
+                           @bind-Value="product.SKU" />
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <label>Product Images</label>
+
+            <InputFile OnChange="UploadImages"
+                       multiple
+                       class="form-control" />
+        </div>
+
+        @if (product.ImageUrls.Any())
+        {
+            <div class="row mt-3">
+                @foreach (var img in product.ImageUrls)
+                {
+                    <div class="col-md-3 text-center mb-3">
+                        <img src="@img"
+                             width="120"
+                             class="img-thumbnail" />
+
+                        <button type="button"
+                                class="btn btn-sm btn-danger mt-2"
+                                @onclick="() => RemoveImage(img)">
+                            Remove
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+
+        <div class="mt-3">
+            <label>Short Description</label>
+            <InputTextArea class="form-control"
+                           @bind-Value="product.ShortDescription" />
+        </div>
+
+        <div class="mt-3">
+            <label>Full Description</label>
+            <InputTextArea rows="4"
+                           class="form-control"
+                           @bind-Value="product.FullDescription" />
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <label>Category</label>
+                <select class="form-control"
+                        @bind="product.CategoryName">
+                    <option value="">Select Category</option>
+                    @foreach (var cat in categories)
+                    {
+                        <option value="@cat.Name">@cat.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label>Manufacturer</label>
+                <select class="form-control"
+                        @bind="product.ManufacturerName">
+                    <option value="">Select Manufacturer</option>
+                    @foreach (var man in manufacturers)
+                    {
+                        <option value="@man.Name">@man.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label>Vendor</label>
+                <select class="form-control"
+                        @bind="product.VendorName">
+                    <option value="">Select Vendor</option>
+                    @foreach (var vendor in vendors)
+                    {
+                        <option value="@vendor.Name">@vendor.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="row mt-3">
+             <div class="col-md-6">
+                  <InputCheckbox @bind-Value="product.Published" />
+                  <label class="ms-2">Published</label>
+            </div>
+           <div class="col-md-6">
+                    <label>Product Type</label>
+                   <select class="form-select" @bind="product.ProductType">
+    @foreach (var type in Enum.GetValues<ProductType>())
+    {
+        <option value="@type">@type.ToString()</option>  <!-- value is string now -->
+    }
+</select>
+
+            </div>
+        </div>
+
+    <!-- ================= PRICING ================= -->
+    <div class="card p-4 mb-4">
+
+        <h5>Pricing</h5>
+
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <label>Price</label>
+                <InputNumber class="form-control"
+                             step="0.01"
+                             @bind-Value="product.Price" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Old Price</label>
+                <InputNumber class="form-control"
+                             step="0.01"
+                             @bind-Value="product.OldPrice" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Product Cost</label>
+                <InputNumber class="form-control"
+                             step="0.01"
+                             @bind-Value="product.ProductCost" />
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ================= INVENTORY ================= -->
+    <div class="card p-4 mb-4">
+
+        <h5>Inventory</h5>
+
+        <div class="row mt-3">
+
+            <!-- STOCK QUANTITY (NO + -) -->
+            <div class="col-md-4">
+                <label>Stock Quantity</label>
+                <input type="number"
+                       class="form-control"
+                       min="0"
+                       @bind="product.StockQuantity" />
+            </div>
+
+            <!-- MINIMUM CART QUANTITY (START FROM 1 WITH + - BUTTON) -->
+            <div class="col-md-4">
+                <label>Minimum Cart Quantity</label>
+
+                <div class="input-group">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="DecreaseQty">
+                        −
+                    </button>
+
+                    <input type="number"
+                           class="form-control text-center"
+                           min="1"
+                           value="@product.MinCartQty"
+                           @oninput="OnMinQtyChanged" />
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="IncreaseQty">
+                        +
+                    </button>
+                </div>
+            </div>
+
+            <!-- MAXIMUM CART QUANTITY (USER INPUT) -->
+            <div class="col-md-4">
+                <label>Maximum Cart Quantity</label>
+                <input type="number"
+                       class="form-control"
+                       min="1"
+                       @bind="product.MaxCartQty" />
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ================= SEO ================= -->
+    <div class="card p-4 mb-4">
+
+        <h5>SEO</h5>
+
+        <InputText class="form-control mt-3"
+                   placeholder="SeName"
+                   @bind-Value="product.SeName" />
+
+        <InputText class="form-control mt-3"
+                   placeholder="Meta Title"
+                   @bind-Value="product.MetaTitle" />
+
+        <InputText class="form-control mt-3"
+                   placeholder="Meta Keywords"
+                   @bind-Value="product.MetaKeywords" />
+
+        <InputTextArea class="form-control mt-3"
+                       placeholder="Meta Description"
+                       @bind-Value="product.MetaDescription" />
+
+    </div>
+
+    <div class="text-center mt-4">
+        <button type="submit"
+                class="btn btn-primary px-5">
+            Save Product
+        </button>
+    </div>
+    </div>
+
+</EditForm>
+
+@code {
+
+    CreateProductDto product = new()
+    {
+        MinCartQty = 1,
+        MaxCartQty = 1
+    };
+
+    List<CategoryDto> categories = new();
+    List<ManufacturerDto> manufacturers = new();
+    List<VendorDto> vendors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categories = await Http.GetFromJsonAsync<List<CategoryDto>>(
+                "api/catalog/categories/GetAll") ?? new();
+
+            manufacturers = await Http.GetFromJsonAsync<List<ManufacturerDto>>(
+                "api/Manufacturers/GetAll") ?? new();
+
+            vendors = await Http.GetFromJsonAsync<List<VendorDto>>(
+                "api/admin/vendors/GetAll") ?? new();
+        }
+        catch
+        {
+            vendors = new();
+        }
+    }
+
+
+    void IncreaseQty()
+    {
+        if (product.MinCartQty < 100)
+            product.MinCartQty++;
+    }
+
+    void DecreaseQty()
+    {
+        if (product.MinCartQty > 1)
+            product.MinCartQty--;
+    }
+
+    async Task SaveProduct()
+{
+    var confirm = await JS.InvokeAsync<bool>(
+        "confirm",
+        "Are you sure you want to create this product?");
+
+    if (!confirm) return;
+
+    var response = await Http.PostAsJsonAsync(
+        "api/catalog/products/Create",
+        product);
+
+    if (response.IsSuccessStatusCode)
+    {
+        // Redirect back to product list
+        Navigation.NavigateTo("/admin/products", true);
+    }
+    else
+    {
+        var error = await response.Content.ReadAsStringAsync();
+        Console.Error.WriteLine(error);
+    }
+}
+
+
+
+    void OnMinQtyChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int value))
+        {
+            product.MinCartQty = value < 1 ? 1 : value;
+        }
+    }
+
+    async Task UploadImages(InputFileChangeEventArgs e)
+{
+    var content = new MultipartFormDataContent();
+
+    foreach (var file in e.GetMultipleFiles())
+    {
+        var fileContent = new StreamContent(file.OpenReadStream(10_000_000));
+        fileContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+        content.Add(fileContent, "file", file.Name); // IMPORTANT: "files"
+    }
+
+    var response = await Http.PostAsync(
+        "api/admin/productimage/upload",
+        content);
+
+    if (response.IsSuccessStatusCode)
+    {
+        var result = await response.Content
+            .ReadFromJsonAsync<List<ImageResponse>>();
+
+            if (result != null)
+            {
+                foreach (var img in result)
+                {
+                    product.ImageUrls.Add(img.imageUrl);
+                }
+            }
+    
+    }
+}
+
+
+    void RemoveImage(string img)
+    {
+        product.ImageUrls.Remove(img);
+    }
+
+
+    public class ImageResponse
+    {
+        public string imageUrl { get; set; }
+    }
+    void GoBack()
+{
+    Navigation.NavigateTo("/admin/products");
+}
+
+
+    public class CategoryDto { public string Id { get; set; } public string Name { get; set; } }
+    public class ManufacturerDto { public string Id { get; set; } public string Name { get; set; } }
+    public class VendorDto { public string Id { get; set; } public string Name { get; set; } }
+}

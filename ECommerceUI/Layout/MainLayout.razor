@@ -1,0 +1,74 @@
+﻿@inherits LayoutComponentBase
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using ECommerceUI.Models.Catalog
+
+<div class="layout-container">
+
+    <!-- TOP NAVBAR -->
+    <header class="top-navbar">
+
+        <div class="logo">
+            MyShop
+        </div>
+
+        <!-- SEARCH -->
+        <div class="search-bar">
+            <input placeholder="Search products..." @bind="searchText" />
+            <button @onclick="SearchProduct">🔍</button>
+        </div>
+
+        <!-- RIGHT MENU -->
+        <div class="nav-icons">
+            <NavLink href="/wishlist">❤️</NavLink>
+            <NavLink href="/cart">🛒 Cart</NavLink>
+            <NavLink href="/login">Login</NavLink>
+        </div>
+
+    </header>
+
+
+    <!-- CATEGORY BAR -->
+    <div class="category-bar">
+
+        @foreach (var category in categories)
+        {
+            <div class="category-item"
+                 @onclick="() => OpenCategory(category.Id)">
+                @category.Name
+            </div>
+        }
+
+    </div>
+
+
+    <!-- PAGE CONTENT -->
+    <div class="content">
+        @Body
+    </div>
+
+</div>
+
+@code {
+
+    List<CategoryDto> categories = new();
+
+    string searchText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Http.GetFromJsonAsync<List<CategoryDto>>
+        ("api/catalog/categories/GetAll");
+    }
+
+    void SearchProduct()
+    {
+        Nav.NavigateTo($"/products?search={searchText}");
+    }
+
+    void OpenCategory(string id)
+    {
+        Nav.NavigateTo($"/products?categoryId={id}");
+    }
+
+}

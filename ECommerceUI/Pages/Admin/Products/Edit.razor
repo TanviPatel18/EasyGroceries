@@ -1,0 +1,310 @@
+﻿@page "/admin/products/edit/{Id}"
+@layout AdminLayout
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
+@using ECommerceUI.Models.Catalog.Enums
+@using ECommerceUI.Models.Catalog
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">Edit Product</h3>
+
+    <button class="btn btn-secondary" @onclick="GoBack">
+        ← Back to Products
+    </button>
+</div>>
+
+@if (product == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="product" OnValidSubmit="UpdateProduct">
+        <DataAnnotationsValidator />
+
+        <!-- ================= BASIC INFORMATION ================= -->
+        <div class="card p-4 mb-4">
+            <h5>Basic Information</h5>
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label>Product Name *</label>
+                    <InputText class="form-control"
+                               @bind-Value="product.ProductName" />
+                </div>
+
+                <div class="col-md-6">
+                    <label>SKU</label>
+                    <InputText class="form-control"
+                               @bind-Value="product.SKU" />
+                </div>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="mt-3">
+                <label>Product Images</label>
+                <InputFile OnChange="UploadImages"
+                           multiple
+                           class="form-control" />
+            </div>
+
+            <!-- Display Images -->
+            @if (product.ImageUrls != null && product.ImageUrls.Any())
+            {
+                <div class="row mt-3">
+                    @foreach (var img in product.ImageUrls)
+                    {
+                        <div class="col-md-3 text-center mb-3">
+                            <img src="@($"https://localhost:5001/{img}")"
+                                 width="120"
+                                 height="120"
+                                 style="object-fit:cover"
+                                 class="img-thumbnail" />
+
+                            <button type="button"
+                                    class="btn btn-sm btn-danger mt-2"
+                                    @onclick="() => RemoveImage(img)">
+                                Remove
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label>Category Id</label>
+                    <InputText class="form-control"
+                               @bind-Value="product.CategoryId" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Manufacturer Id</label>
+                    <InputText class="form-control"
+                               @bind-Value="product.ManufacturerId" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Vendor Id</label>
+                    <InputText class="form-control"
+                               @bind-Value="product.VendorId" />
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <InputCheckbox @bind-Value="product.Published" />
+                <label class="ms-2">Published</label>
+            </div>
+
+            <div class="mt-3">
+                <label>Product Type</label>
+                <InputSelect class="form-select" @bind-Value="product.ProductType">
+                    @foreach (var type in Enum.GetValues<ProductType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </InputSelect>
+
+            </div>
+        </div>
+
+        <!-- ================= PRICING ================= -->
+        <div class="card p-4 mb-4">
+            <h5>Pricing</h5>
+
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label>Price</label>
+                    <InputNumber class="form-control"
+                                 step="0.01"
+                                 @bind-Value="product.Price" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Old Price</label>
+                    <InputNumber class="form-control"
+                                 step="0.01"
+                                 @bind-Value="product.OldPrice" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Product Cost</label>
+                    <InputNumber class="form-control"
+                                 step="0.01"
+                                 @bind-Value="product.ProductCost" />
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= INVENTORY ================= -->
+        <div class="card p-4 mb-4">
+            <h5>Inventory</h5>
+
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label>Stock Quantity</label>
+                    <InputNumber class="form-control"
+                                 @bind-Value="product.StockQuantity" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Minimum Cart Quantity</label>
+
+                    <div class="input-group">
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="DecreaseQty">
+                            −
+                        </button>
+
+                        <input type="number"
+                               class="form-control text-center"
+                               value="@product.MinCartQty"
+                               @oninput="OnMinQtyChanged" />
+
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="IncreaseQty">
+                            +
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label>Maximum Cart Quantity</label>
+                    <InputNumber class="form-control"
+                                 @bind-Value="product.MaxCartQty" />
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SEO ================= -->
+        <div class="card p-4 mb-4">
+            <h5>SEO</h5>
+
+            <InputText class="form-control mt-3"
+                       placeholder="SeName"
+                       @bind-Value="product.SeName" />
+
+            <InputText class="form-control mt-3"
+                       placeholder="Meta Title"
+                       @bind-Value="product.MetaTitle" />
+
+            <InputText class="form-control mt-3"
+                       placeholder="Meta Keywords"
+                       @bind-Value="product.MetaKeywords" />
+
+            <InputTextArea class="form-control mt-3"
+                           placeholder="Meta Description"
+                           @bind-Value="product.MetaDescription" />
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary px-5">
+                Update Product
+            </button>
+        </div>
+
+    </EditForm>
+}
+@code {
+
+    [Parameter] public string Id { get; set; }
+
+    UpdateProductDto product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        options.Converters.Add(
+            new JsonStringEnumConverter(allowIntegerValues: true));
+
+        product = await Http.GetFromJsonAsync<UpdateProductDto>(
+            $"api/catalog/products/{Id}", options);
+
+
+        product.ImageUrls ??= new List<string>();
+    }
+
+    async Task UpdateProduct()
+    {
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Are you sure you want to update this product?");
+
+        if (!confirm) return;
+
+        await Http.PutAsJsonAsync(
+            "api/catalog/products/Update",
+            product);
+
+        Navigation.NavigateTo("/admin/products", true);
+    }
+
+    async Task UploadImages(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles())
+        {
+            var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(file.OpenReadStream(10_000_000));
+
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+            content.Add(fileContent, "file", file.Name);
+
+            var response = await Http.PostAsync(
+                "api/admin/productimage/upload",
+                content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content
+                    .ReadFromJsonAsync<ImageResponse>();
+
+                if (!string.IsNullOrEmpty(result?.imageUrl))
+                    product.ImageUrls.Add(result.imageUrl);
+            }
+        }
+    }
+
+    void RemoveImage(string img)
+    {
+        product.ImageUrls.Remove(img);
+    }
+
+    void IncreaseQty()
+    {
+        if (product.MinCartQty < 100)
+            product.MinCartQty++;
+    }
+
+    void DecreaseQty()
+    {
+        if (product.MinCartQty > 1)
+            product.MinCartQty--;
+    }
+
+    void OnMinQtyChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int value))
+            product.MinCartQty = value < 1 ? 1 : value;
+    }
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/admin/products");
+    }
+
+    public class ImageResponse
+    {
+        public string imageUrl { get; set; }
+    }
+}

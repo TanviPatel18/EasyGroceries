@@ -1,0 +1,67 @@
+﻿
+@page "/login"
+@layout AuthLayout
+@inject NavigationManager Navigation
+@inject ECommerceUI.Services.AuthService AuthService
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <h2 class="auth-main-title">WELCOME, PLEASE SIGN IN!</h2>
+
+        <div class="auth-body">
+
+            <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="auth-input">
+                    <span class="icon">✉</span>
+                    <InputText @bind-Value="loginModel.Email"
+                               placeholder="Email address" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">🔒</span>
+                    <InputText @bind-Value="loginModel.Password"
+                               type="password"
+                               placeholder="Password" />
+                </div>
+
+                <div class="auth-options">
+                    <label>
+                        <input type="checkbox" /> Remember me?
+                    </label>
+                    <a href="#">Forgot password?</a>
+                </div>
+
+                <div class="auth-button-area">
+                    <button class="auth-btn">LOG IN</button>
+                </div>
+
+                <div style="text-align:center;margin-top:10px;">
+                    <a href="/register">New Customer? Register</a>
+                </div>
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private LoginModel loginModel = new();
+
+    private async Task HandleLogin()
+    {
+        var result = await AuthService.LoginAsync(loginModel);
+
+        if (result != null)
+        {
+            if (result.Role == "Admin")
+                Navigation.NavigateTo("/admin/products", true);
+            else
+                Navigation.NavigateTo("/home", true);
+        }
+    }
+}

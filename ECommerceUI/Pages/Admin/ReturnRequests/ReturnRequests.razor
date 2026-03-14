@@ -1,0 +1,184 @@
+﻿@page "/admin/returnrequests"
+@layout AdminLayout
+@using ECommerceUI.Models.Sales
+@using ECommerceUI.Services.Order
+@inject ReturnRequestService ReturnRequestService
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2 class="mb-0 fw-semibold">Return Requests</h2>
+
+</div>
+
+<!-- ================= SEARCH ================= -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header fw-semibold">Search</div>
+
+    <div class="card-body">
+        <div class="row g-3">
+
+            <!-- ROW 1 -->
+            <div class="col-md-6">
+                <label class="form-label">Order Id</label>
+                <input class="form-control" @bind="search.OrderId" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="search.Status">
+                    <option value="">All</option>
+                    <option>Pending</option>
+                    <option>Approved</option>
+                    <option>Rejected</option>
+                </select>
+            </div>
+
+            <!-- ROW 2 -->
+            <div class="col-md-6">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" @bind="search.StartDate" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" @bind="search.EndDate" />
+            </div>
+
+        </div>
+
+        <div class="text-center mt-4">
+            <button class="btn btn-primary me-2" @onclick="Search">
+                Search
+            </button>
+            <button class="btn btn-secondary" @onclick="LoadData">
+                Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= TABLE ================= -->
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-nowrap">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:40px;"></th>  <!-- Checkbox column -->
+                    <th>ID</th>
+                    <th>Order</th>
+                    <th>Product</th>
+                    <th>Customer</th>
+                    <th>Quantity</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Created On</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (requests == null || !requests.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            No return requests found
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in requests)
+                    {
+                        <tr class="@(item.Id == selectedRequestId ? "table-active" : "")">
+
+                            <!-- Checkbox -->
+                            <td>
+                                <input type="checkbox"
+                                       checked="@(item.Id == selectedRequestId)"
+                                       @onchange="() => SelectRequest(item.Id)" />
+                            </td>
+
+                            <td>@item.Id</td>
+                            <td>@item.OrderId</td>
+                            <td>@item.ProductId</td>
+                            <td>@item.CustomerId</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Reason</td>
+
+                            <td>
+                                <span class="badge
+                                            @(item.Status == "Approved" ? "bg-success" :
+                                                                            item.Status == "Rejected" ? "bg-danger" :
+                                                                            "bg-warning text-dark")">
+                                    @item.Status
+                                </span>
+                            </td>
+
+                            <td>
+                                @item.CreatedOn.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                            </td>
+
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(selectedRequestId))
+{
+    <div class="alert alert-info mt-3">
+        Selected Request: @selectedRequestId
+    </div>
+}
+
+@code {
+
+    private List<ReturnRequestDto> requests = new();
+    private ReturnRequestSearchDto search = new();
+    private string? selectedRequestId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        search = new ReturnRequestSearchDto();
+        requests = await ReturnRequestService.GetAll();
+        selectedRequestId = null;
+    }
+
+    private async Task Search()
+    {
+        requests = await ReturnRequestService.Search(search);
+        selectedRequestId = null;
+    }
+
+    private void SelectRequest(string id)
+    {
+        if (selectedRequestId == id)
+            selectedRequestId = null;
+        else
+            selectedRequestId = id;
+    }
+
+    private async Task ApproveSelected()
+    {
+        if (string.IsNullOrEmpty(selectedRequestId))
+            return;
+
+        await ReturnRequestService.Approve(selectedRequestId);
+        await LoadData();
+    }
+
+    private async Task RejectSelected()
+    {
+        if (string.IsNullOrEmpty(selectedRequestId))
+            return;
+
+        await ReturnRequestService.Reject(selectedRequestId);
+        await LoadData();
+    }
+}

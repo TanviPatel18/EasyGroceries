@@ -1,0 +1,96 @@
+﻿@page "/admin/vendors/create"
+@layout AdminLayout
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Add a New Vendor</h2>
+
+    <button class="btn btn-secondary" @onclick="GoBack">
+        ← Back to Vendor List
+    </button>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold">Vendor Info</div>
+    <div class="card-body">
+
+        <EditForm Model="model" OnValidSubmit="CreateVendor">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-3">
+
+                <!-- Name -->
+                <div class="col-md-6">
+                    <label class="form-label">Name *</label>
+                    <InputText class="form-control" @bind-Value="model.Name" />
+                </div>
+
+                <!-- Email -->
+                <div class="col-md-6">
+                    <label class="form-label">Email *</label>
+                    <InputText class="form-control" @bind-Value="model.Email" />
+                </div>
+
+                <!-- Contact Phone -->
+                <div class="col-md-6">
+                    <label class="form-label">Contact Phone</label>
+                    <InputText class="form-control" @bind-Value="model.ContactPhone" />
+                </div>
+
+                <!-- Company Name -->
+                <div class="col-md-6">
+                    <label class="form-label">Company Name</label>
+                    <InputText class="form-control" @bind-Value="model.CompanyName" />
+                </div>
+
+            </div>
+
+            <!-- ================= SAVE BUTTON ================= -->
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-success px-5">Save</button>
+            </div>
+
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private CreateVendorDto model = new();
+
+    private async Task CreateVendor()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/admin/vendors/Create", model);
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/admin/vendors");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", "Error: " + error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + ex.Message);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/vendors");
+    }
+
+    public class CreateVendorDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string ContactPhone { get; set; } = string.Empty;
+        public string CompanyName { get; set; } = string.Empty;
+    }
+}
