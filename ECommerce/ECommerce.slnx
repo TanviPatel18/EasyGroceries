@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../ECommerceUI/ECommerceUI.csproj" Id="b3d57881-f1b1-4a79-83f0-5d131eeb2d40" />
+  <Project Path="ECommerce.csproj" />
+</Solution>
