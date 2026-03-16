@@ -1,5 +1,6 @@
 ﻿using ECommerce.Application.Catalog.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using ECommerce.Application.Catalog.DTOs;
 
 namespace ECommerce.API.Controllers.Catalog
 {
@@ -16,12 +17,12 @@ namespace ECommerce.API.Controllers.Catalog
 
         [HttpPost("upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Upload([FromForm] IFormFile file)
+        public async Task<IActionResult> Upload([FromForm] CategoryImageUploadDto dto)
         {
-            if (file == null)
+            if (dto.File == null)
                 return BadRequest("No file uploaded");
 
-            var imageUrl = await _service.UploadAsync(file);
+            var imageUrl = await _service.UploadAsync(dto.File);
 
             return Ok(new { imageUrl });
         }

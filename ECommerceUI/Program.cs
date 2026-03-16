@@ -27,7 +27,7 @@ builder.Services.AddScoped(sp =>
     };
 });
 
-
+builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<CategoryService>();
@@ -35,12 +35,11 @@ builder.Services.AddScoped<ManufacturerService>();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<GdprRequestService>();
 builder.Services.AddScoped<OrderService>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
-        sp.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<ShipmentService>();
 builder.Services.AddScoped<ReturnRequestService>();
-//builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
-//        sp.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+        sp.GetRequiredService<CustomAuthStateProvider>());
 
 
 await builder.Build().RunAsync();

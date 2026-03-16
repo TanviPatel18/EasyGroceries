@@ -2,6 +2,9 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using ECommerceUI.Models.Catalog
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
 
 <nav class="shop-navbar">
 
@@ -44,23 +47,19 @@
     <!-- Right Menu -->
     <div class="right-menu">
 
-        @if (role == null)
+        <AuthorizeView>
+    <Authorized Context="authState">
+        @if (authState.User.IsInRole("Admin"))
         {
-            <span @onclick="GoLogin">
-                Login
-            </span>
-
-            <span @onclick="GoRegister">
-                Register
-            </span>
+            <span @onclick="GoAdmin">Admin</span>
         }
-
-        @if (role == "Admin")
-        {
-            <span @onclick="GoAdmin">
-                Admin
-            </span>
-        }
+        <span class="logout-btn" @onclick="Logout">🚪 Logout</span>
+    </Authorized>
+    <NotAuthorized>
+        <span @onclick="GoLogin">Login</span>
+        <span @onclick="GoRegister">Register</span>
+    </NotAuthorized>
+</AuthorizeView>
 
         <span @onclick="GoCart">
             🛒 Cart
@@ -80,7 +79,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        role = await JS.InvokeAsync<string>("localStorage.getItem", "role");
+        // role = await JS.InvokeAsync<string>("localStorage.getItem", "role");
 
         try
         {
@@ -128,4 +127,25 @@
         Navigation.NavigateTo($"/search/{searchText}");
     }
 
+    async Task Logout()
+    {
+        await Http.PostAsync("api/auth/logout", null);
+
+        await JS.InvokeVoidAsync("localStorage.removeItem", "role");
+
+        if (AuthStateProvider is CustomAuthStateProvider provider)
+        {
+            provider.MarkUserAsLoggedOut();
+        }
+
+        Navigation.NavigateTo("/", true);
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            role = await JS.InvokeAsync<string>("localStorage.getItem", "role");
+            StateHasChanged();
+        }
+    }
 }

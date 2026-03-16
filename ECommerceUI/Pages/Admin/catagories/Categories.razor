@@ -97,7 +97,7 @@
                     <td>
                         @if (!string.IsNullOrEmpty(category.ImageUrl))
                         {
-                            <img src="https://localhost:5001/@category.ImageUrl"
+                            <img src="@($"{ApiBase}{category.ImageUrl}")"
                                  width="60"
                                  height="60"
                                  style="object-fit:cover;border-radius:5px;" />
@@ -128,6 +128,7 @@
 
 @code {
 
+    string ApiBase = "https://localhost:5001/";
     private List<CategoryDto> allCategories = new();
     private List<CategoryDto> categories = new();
 

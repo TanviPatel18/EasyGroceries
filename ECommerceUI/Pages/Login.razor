@@ -1,7 +1,11 @@
 ﻿
 @page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JS
 @layout AuthLayout
 @inject NavigationManager Navigation
+
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ECommerceUI.Services.AuthService AuthService
 
 <div class="auth-page">
@@ -36,7 +40,7 @@
                 </div>
 
                 <div class="auth-button-area">
-                    <button class="auth-btn">LOG IN</button>
+                    <button class="auth-btn" type="submit">LOG IN</button>
                 </div>
 
                 <div style="text-align:center;margin-top:10px;">
@@ -58,10 +62,17 @@
 
         if (result != null)
         {
+            await JS.InvokeVoidAsync("localStorage.setItem", "role", result.Role);
+
+            if (AuthStateProvider is CustomAuthStateProvider provider)
+            {
+                provider.MarkUserAsAuthenticated(result.Role);
+            }
+
             if (result.Role == "Admin")
                 Navigation.NavigateTo("/admin/products", true);
             else
-                Navigation.NavigateTo("/home", true);
+                Navigation.NavigateTo("/", true);
         }
     }
 }

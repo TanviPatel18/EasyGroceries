@@ -3,7 +3,7 @@
 @inject CategoryService CategoryService
 @inject HttpClient Http
 @inject NavigationManager Navigation
-
+@using Microsoft.AspNetCore.Components.Forms
 <h3>Add New Category</h3>
 
 <div class="card">
@@ -58,11 +58,12 @@
 
         var stream = file.OpenReadStream(10 * 1024 * 1024);
 
-        content.Add(
-            new StreamContent(stream),
-            "file",
-            file.Name
-        );
+        var fileContent = new StreamContent(stream);
+
+        fileContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+        content.Add(fileContent, "File", file.Name);
 
         var response = await Http.PostAsync(
             "api/admin/categoryimage/upload",

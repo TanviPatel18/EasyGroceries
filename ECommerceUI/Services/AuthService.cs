@@ -18,7 +18,7 @@ namespace ECommerceUI.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<LoginResponse> LoginAsync(LoginModel model)
+        public async Task<LoginResponse?> LoginAsync(LoginModel model)
         {
             var response = await _http.PostAsJsonAsync("api/auth/login", model);
 

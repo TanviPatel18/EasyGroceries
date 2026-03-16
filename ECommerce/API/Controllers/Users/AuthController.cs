@@ -1,5 +1,6 @@
 ﻿using ECommerce.Application.Authentication.Interfaces;
 using ECommerce.Application.Users.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -37,15 +38,15 @@ namespace ECommerce.API.Controllers.Users
             Response.Cookies.Append("jwt", accessToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = false,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddMinutes(15)
+                Expires = DateTime.UtcNow.AddHours(2)
             });
 
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = false,
                 SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7)
             });
@@ -61,7 +62,12 @@ namespace ECommerce.API.Controllers.Users
             SetTokenCookies(result.AccessToken, result.RefreshToken);
 
 
-            return Ok(new { message = "Login successful" });
+            return Ok(new AuthResponseDto
+            {
+                AccessToken = result.AccessToken,
+                RefreshToken = result.RefreshToken,
+                Role=result.Role
+            });
         }
 
 
@@ -81,6 +87,18 @@ namespace ECommerce.API.Controllers.Users
             return Ok();
         }
 
+        [HttpPost("logout")]
+        [Authorize]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("jwt");
+            Response.Cookies.Delete("refreshToken");
+
+            return Ok(new
+            {
+                message = "Logged out successfully"
+            });
+        }
 
 
 

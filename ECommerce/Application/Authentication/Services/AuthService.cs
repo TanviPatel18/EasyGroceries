@@ -62,7 +62,7 @@ namespace ECommerce.Application.Authentication.Services
             return "Registered successfully";
         }
 
-        public async Task<(string AccessToken, string RefreshToken)> LoginAsync(LoginDto dto)
+        public async Task<(string AccessToken, string RefreshToken, string Role)> LoginAsync(LoginDto dto)
         {
             var customer = await _repository.GetByEmailAsync(dto.Email);
 
@@ -80,7 +80,7 @@ namespace ECommerce.Application.Authentication.Services
 
             await _repository.UpdateAsync(customer); // ⚠ FIXED (only one parameter)
 
-            return (accessToken, refreshToken);
+            return (accessToken, refreshToken, customer.CustomerRole);
         }
 
 

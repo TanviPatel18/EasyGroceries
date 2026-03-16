@@ -6,7 +6,7 @@ namespace ECommerce.Application.Authentication.Interfaces
     {
             Task<string> RegisterAsync(RegisterDto dto);
 
-            Task<(string AccessToken, string RefreshToken)> LoginAsync(LoginDto dto);
+            Task<(string AccessToken, string RefreshToken, string Role)> LoginAsync(LoginDto dto);
 
             Task<(string AccessToken, string RefreshToken)> RefreshTokenAsync(string refreshToken);
         

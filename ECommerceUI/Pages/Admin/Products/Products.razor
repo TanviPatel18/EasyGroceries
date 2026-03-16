@@ -1,6 +1,7 @@
 ﻿@page "/admin/products"
 @layout AdminLayout
-
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
 @inject IJSRuntime JS
 @* @inject HttpClient Http *@
 @using System.Text.Json
@@ -167,7 +168,16 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var role = await JS.InvokeAsync<string>("localStorage.getItem", "role");
+
+        if (role != "Admin")
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await LoadProducts();
+
         try
         {
             categories = await Http.GetFromJsonAsync<List<CategoryVm>>("api/catalog/categories/GetAll") ?? new();

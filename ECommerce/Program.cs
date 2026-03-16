@@ -76,6 +76,9 @@ builder.Services.AddScoped<ICategoryImageService, CategoryImageService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -90,7 +93,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
         };
 
-        // 🔥 VERY IMPORTANT — Read token from Cookie
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>

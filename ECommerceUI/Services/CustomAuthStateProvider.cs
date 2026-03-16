@@ -1,40 +1,53 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.JSInterop;
 using System.Security.Claims;
 
 namespace ECommerceUI.Services
 {
     public class CustomAuthStateProvider : AuthenticationStateProvider
     {
+        private readonly IJSRuntime _js;
+
+        public CustomAuthStateProvider(IJSRuntime js)
+        {
+            _js = js;
+        }
+
         private ClaimsPrincipal _anonymous =
             new ClaimsPrincipal(new ClaimsIdentity());
 
-        private ClaimsPrincipal _currentUser;
-
-        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+        public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
-            return Task.FromResult(
-                new AuthenticationState(_currentUser ?? _anonymous));
+            var role = await _js.InvokeAsync<string>("localStorage.getItem", "role");
+
+            if (string.IsNullOrEmpty(role))
+                return new AuthenticationState(_anonymous);
+
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Role, role)
+            }, "apiauth");
+
+            var user = new ClaimsPrincipal(identity);
+
+            return new AuthenticationState(user);
         }
 
         public void MarkUserAsAuthenticated(string role)
         {
             var identity = new ClaimsIdentity(new[]
             {
-                new Claim(ClaimTypes.Role, role)
-            }, "apiauth");
+        new Claim(ClaimTypes.Role, role)
+    }, "apiauth");
 
-            _currentUser = new ClaimsPrincipal(identity);
+            var user = new ClaimsPrincipal(identity);
 
-            NotifyAuthenticationStateChanged(
-                Task.FromResult(new AuthenticationState(_currentUser)));
+            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
         }
 
         public void MarkUserAsLoggedOut()
         {
-            _currentUser = _anonymous;
-
-            NotifyAuthenticationStateChanged(
-                Task.FromResult(new AuthenticationState(_anonymous)));
+            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
         }
     }
 }

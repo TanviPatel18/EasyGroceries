@@ -3,6 +3,9 @@
 @inject NavigationManager Navigation
 @using ECommerceUI.Models.Catalog
 @using ECommerceUI.Models.HomePage
+@using Microsoft.AspNetCore.Components.Authorization
+
+
 
 <div class="home-container">
 
@@ -38,9 +41,14 @@
                 <div class="category-card"
                      @onclick="() => LoadProducts(category.Id)">
 
+                    <!-- CATEGORY IMAGE -->
+                    <img src="@GetCategoryImage(category)"
+                         class="category-img" />
+
+                    @* <!-- CATEGORY NAME -->
                     <div class="cat-name">
                         @category.Name
-                    </div>
+                    </div> *@
 
                 </div>
             }
@@ -158,6 +166,17 @@
         if (product.ImageUrls != null && product.ImageUrls.Any())
         {
             return "https://localhost:5001/" + product.ImageUrls.First();
+        }
+
+        return "/images/no-image.png";
+    }
+
+
+    string GetCategoryImage(CategoryDto category)
+    {
+        if (!string.IsNullOrEmpty(category.ImageUrl))
+        {
+            return "https://localhost:5001/" + category.ImageUrl;
         }
 
         return "/images/no-image.png";
