@@ -1,19 +1,15 @@
-﻿﻿
-@page "/"
+﻿@page "/"
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using ECommerceUI.Models.Catalog
 @using ECommerceUI.Models.HomePage
 @using Microsoft.AspNetCore.Components.Authorization
 
-
-
-<div class="home-container slider-section">
+<div class="">
 
     @if (banners != null && banners.Any())
-
     {
-        <div class="hero-slider">
+        <div class="hero-slider home-container slider-section">
 
             <button class="slider-btn left" @onclick="PrevBanner">
                 &#10094;
@@ -27,33 +23,48 @@
                 &#10095;
             </button>
 
+            <div class="slider-dots">
+                @for (int i = 0; i < banners.Count; i++)
+                {
+                    var idx = i;
+                    <span class="dot @(idx == current ? "active" : "")"
+                          @onclick="() => current = idx"></span>
+                }
+            </div>
+
         </div>
     }
 
-    <div class="section">
+    <div class="shopcategory-section">
 
         <h3 class="section-title">Shop by Category</h3>
 
-        <div class="category-grid">
-            @foreach (var category in categories.Where(x => x.Published))
-            {
-                <div class="category-card"
-                     @onclick="() => LoadProducts(category.Id)">
+        <div class="category-wrapper">
+            <div class="category-grid"
+                 style="transform: translateX(-@(currentCategoryIndex* cardStep)px);
+                transition:@(isResetting ? "none" : "transform 0.5s ease-in-out");">
 
-                    <img src="@GetCategoryImage(category)" class="category-img" />
+                @foreach (var category in categories.Where(x => x.Published))
+                {
+                    <div class="category-card"
+                         @onclick="() => LoadProducts(category.Id)">
 
-                    <div class="category-name">
-                        @category.Name
+                        <div class="category-img-wrap">
+                            <img src="@GetCategoryImage(category)" class="category-img" alt="@category.Name" />
+                        </div>
+
+                        <div class="category-name">@category.Name</div>
+
                     </div>
+                }
 
-                </div>
-            }
+            </div>
         </div>
 
     </div>
 
     <!-- PRODUCT SECTION -->
-    <div class="section  featured-product">
+    <div class=" featured-product">
 
         <h3 class="section-title">Featured Products</h3>
 
@@ -63,19 +74,26 @@
             {
                 <div class="product-card">
 
-                    <img src="@GetProductImage(product)" />
+                    <div class="product-img-wrap">
+                        <img src="@GetProductImage(product)" alt="@product.ProductName" />
+                    </div>
 
                     <div class="product-info">
 
-                        <h5>@product.ProductName</h5>
+                        <h5 class="product-name">@product.ProductName</h5>
 
-                        <div class="price">
-                            $@product.Price
+                        <div class="price">$@product.Price</div>
+
+                        <div class="action-row">
+
+                            <button class="wishlist-btn @(IsInWishlist(product) ? "active" : "")"
+                                    @onclick="() => ToggleWishlist(product)">
+                                <i class="@(IsInWishlist(product) ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+                            </button>
+
+                            <button class="add-btn">Add to Cart</button>
+
                         </div>
-
-                        <button class="add-btn">
-                            Add to Cart
-                        </button>
 
                     </div>
 
@@ -85,14 +103,15 @@
         </div>
 
     </div>
+
 </div>
+
 <!-- SELLER CTA -->
 <div class="seller-banner">
     <div class="seller-text">
         <h2>Want to become a seller?</h2>
         <p>Start selling your products to thousands of customers</p>
     </div>
-
     <button class="seller-btn">Become a Seller</button>
 </div>
 
@@ -118,6 +137,7 @@
         ("api/banners");
 
         StartSlider();
+        StartCategorySlider();
     }
 
     void StartSlider()
@@ -175,7 +195,6 @@
         return "/images/no-image.png";
     }
 
-
     string GetCategoryImage(CategoryDto category)
     {
         if (!string.IsNullOrEmpty(category.ImageUrl))
@@ -184,6 +203,48 @@
         }
 
         return "/images/no-image.png";
+    }
+
+    // category slider
+    int currentCategoryIndex = 0;
+    int cardStep = 180;
+    bool isResetting = false;
+
+    System.Timers.Timer categoryTimer;
+
+    void StartCategorySlider()
+    {
+        categoryTimer = new System.Timers.Timer(2500);
+        categoryTimer.Elapsed += RotateCategory;
+        categoryTimer.Start();
+    }
+
+    void RotateCategory(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (categories == null || categories.Count == 0)
+            return;
+
+        var first = categories[0];
+        categories.RemoveAt(0);
+        categories.Add(first);
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    // wishlist ui
+    HashSet<string> wishlist = new();
+
+    void ToggleWishlist(ProductDto product)
+    {
+        if (wishlist.Contains(product.Id))
+            wishlist.Remove(product.Id);
+        else
+            wishlist.Add(product.Id);
+    }
+
+    bool IsInWishlist(ProductDto product)
+    {
+        return wishlist.Contains(product.Id);
     }
 
 }
