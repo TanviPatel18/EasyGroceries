@@ -37,15 +37,18 @@ main, article {
     width: 100%;
     position: relative;
 }
-
 .hero-img {
     width: 100%;
-    height: 420px;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
 }
 
+.featured-product
+{
+    background:#ccc;
+    padding: 20px;
+}
 /* SLIDER BUTTONS */
-
 .slider-btn {
     position: absolute;
     top: 50%;
@@ -85,57 +88,76 @@ main, article {
 }
 
 .section-title {
-    font-size: 22px;
+    font-size: 32px;
     margin-bottom: 15px;
+    text-align: center;
+    text-transform: math-auto;
+    font-weight: 700;
 }
 
 /* ===============================
-   CATEGORY GRID
+   CATEGORY (FINAL EXACT UI)
 ================================ */
 
 .category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(124px, 2fr));
+    gap: 86px;
 }
 
+/* CARD */
 .category-card {
-    background: white;
-    border-radius: 12px;
-    height: 140px;
+    background: #fff;
+    border-radius: 5px;
+    padding: 10px 10px 20px 10px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 8px;
     cursor: pointer;
-    transition: 0.3s;
+    transition: 0.25s;
+    height: auto;
+    border: 1px solid #ccc;
 }
 
-    .category-card:hover {
-        transform: translateY(-5px);
-    }
+    /* HOVER */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(124px, 2fr));
+    gap: 86px;
+}
 
+/* IMAGE */
 .category-img {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
     object-fit: contain;
 }
 
+/* NAME BELOW IMAGE */
+.category-name {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    color: #333;
+}
 /* ===============================
    PRODUCT GRID
 ================================ */
 
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(212px, 0fr));
+    gap: 4px;
     margin-bottom: 10px;
 }
 
 .product-card {
     background: white;
-    border-radius: 12px;
-    padding: 15px;
+    border-radius: 5px;
+    padding: 15px 15px 30px 15px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.08);
     transition: 0.3s;
 }
@@ -147,7 +169,7 @@ main, article {
     .product-card img {
         width: 100%;
         height: 180px;
-        object-fit: contain;
+        object-fit: cover;
     }
 
 .product-info {
@@ -169,124 +191,81 @@ main, article {
     cursor: pointer;
 }
 
+
+
 /* ===============================
-   CLEAN FOOTER FIX
+   SELLER CTA (MODERN FIX)
 ================================ */
 
-.custom-footer {
-    background: #f5f5f5;
-    padding: 40px 40px 20px;
-    margin-top: 0 !important; /* remove gap */
-    font-family: 'Segoe UI', sans-serif;
+.seller-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #6d28d9, #4c1d95);
+    color: white;
+    padding: 25px 40px;
+    margin: 40px auto;
+    border-radius: 12px;
+    max-width: 1100px;
+    width: 92%;
 }
 
-/* MAIN LAYOUT */
-.footer-container {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr 1.4fr 1fr 1fr;
-    gap: 25px;
-    align-items: start; /* IMPORTANT FIX */
+/* TEXT */
+.seller-text h2 {
+    font-size: 24px;
+    margin: 0;
 }
 
-/* NORMAL COLUMNS */
-.footer-column h4 {
+.seller-text p {
     font-size: 14px;
-    margin-bottom: 15px;
+    opacity: 0.9;
+}
+
+/* BUTTON */
+.seller-btn {
+    background: #facc15;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
     font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
-.footer-column p,
-.footer-column li {
-    font-size: 13px;
-    color: #555;
-    margin: 6px 0;
-}
-
-.footer-column ul {
-    list-style: none;
-    padding: 0;
-}
-
-.footer-column a {
-    text-decoration: none;
-    color: #777;
-}
-
-    .footer-column a:hover {
-        color: #000;
+    .seller-btn:hover {
+        background: #ffb300;
     }
 
-/* 🔥 FIXED NEWSLETTER (MAIN FIX HERE) */
-.newsletter-box {
-    background: #6c6c6c;
-    padding: 25px;
-    text-align: center;
-    color: #fff;
-    max-width: 320px;
-    width: 100%;
-    justify-self: center; /* KEY FIX */
-}
+/* ===============================
+   RESPONSIVE FIX (IMPORTANT)
+================================ */
 
-    /* INPUT */
-    .newsletter-box input {
+@media (max-width: 768px) {
+    .seller-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+        padding: 20px;
+    }
+
+    .seller-text h2 {
+        font-size: 18px;
+    }
+
+    .seller-text p {
+        font-size: 13px;
+    }
+
+    .seller-btn {
         width: 100%;
-        padding: 10px;
-        border: none;
-        margin-bottom: 10px;
     }
-
-    /* BUTTON */
-    .newsletter-box button {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #fff;
-        background: transparent;
-        color: #fff;
-        cursor: pointer;
-    }
-
-        .newsletter-box button:hover {
-            background: #fff;
-            color: #000;
-        }
-
-/* SOCIAL ICONS */
-.social-icons {
-    margin-top: 15px;
 }
 
-    .social-icons span {
-        display: inline-block;
-        background: #fff;
-        color: #000;
-        width: 35px;
-        height: 35px;
-        line-height: 35px;
-        border-radius: 50%;
-        margin: 5px;
-    }
 
-/* PAYMENT ICONS */
-.payment-icons img {
-    width: 40px;
-    margin-right: 5px;
-    margin-top: 10px;
-}
+/*<==================================Slider-css-Start=================================>*/
 
-/* FOOTER BOTTOM */
-.footer-bottom {
-    margin-top: 30px;
-    font-size: 12px;
-    color: #888;
-}
-
-/* RESPONSIVE */
-@media (max-width: 992px) {
-    .footer-container {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .newsletter-box {
-        grid-column: span 2;
-    }
+.slider-section
+{
+    padding:25px;
+    border-radius:20px;
 }

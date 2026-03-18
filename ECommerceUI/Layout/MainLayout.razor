@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@using ECommerceUI.Layout
 @inject NavigationManager Navigation
 
 <div class="layout-container">
@@ -57,10 +58,10 @@
 
 
     <!-- PAGE CONTENT -->
-    <div class="content">
+    <div class="">
         @Body
     </div>
-
+    <Footer />
 </div>
 
 @code {
