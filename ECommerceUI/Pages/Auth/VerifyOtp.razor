@@ -1,0 +1,139 @@
+﻿@page "/verify-otp"
+@layout AuthLayout
+@inject ECommerceUI.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@using ECommerceUI.Models.Auth
+@using Microsoft.AspNetCore.WebUtilities
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <h2 class="auth-main-title">ENTER OTP</h2>
+
+        <div class="auth-body">
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="auth-message error">@errorMessage</div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="auth-message success">@successMessage</div>
+            }
+
+            <p style="text-align:center;
+                color:#9a9a9a;
+                margin-bottom:30px;
+                font-size:14px;
+                line-height:1.7;">
+                A 6-digit OTP was sent to<br />
+                <strong style="color:#555;">@email</strong>
+            </p>
+
+            <EditForm Model="@otpModel"
+                      OnValidSubmit="HandleVerifyOtp">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="auth-input">
+                    <span class="icon">🔑</span>
+                    <InputText @bind-Value="otpModel.Otp"
+                               placeholder="Enter 6-digit OTP"
+                               maxlength="6" />
+                </div>
+
+                <div class="auth-button-area">
+                    <button class="auth-btn" type="submit"
+                            disabled="@isLoading">
+                        @(isLoading ? "VERIFYING..." : "VERIFY OTP")
+                    </button>
+                </div>
+
+                <div style="display:flex;
+                    justify-content:space-between;
+                    margin-top:20px;
+                    font-size:14px;">
+                    <a href="/forgot-password">Go Back</a>
+                    <a href="#"
+                           @onclick="ResendOtp"
+                           @onclick:preventDefault="true">
+                        Resend OTP
+                    </a>
+                </div>
+
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private VerifyOtpModel otpModel = new();
+    private string email = string.Empty;
+    private string phone = string.Empty;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isLoading = false;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("email", out var e))
+            email = e!;
+
+        if (query.TryGetValue("phone", out var p))
+            phone = p!;
+
+        otpModel.Email = email;
+
+        if (string.IsNullOrEmpty(email))
+            Navigation.NavigateTo("/forgot-password");
+    }
+
+    private async Task HandleVerifyOtp()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        isLoading = true;
+
+        var result = await AuthService.VerifyOtpAsync(otpModel);
+
+        isLoading = false;
+
+        if (result == "invalid")
+        {
+            errorMessage =
+                "Invalid or expired OTP. Please try again.";
+        }
+        else
+        {
+            Navigation.NavigateTo(
+                $"/reset-password?email={Uri.EscapeDataString(email)}&otp={Uri.EscapeDataString(otpModel.Otp)}");
+        }
+    }
+
+    private async Task ResendOtp()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        isLoading = true;
+
+        var resendModel = new ForgotPasswordModel
+        {
+            Email = email,
+            Phone = phone
+        };
+
+        var result = await AuthService.ForgotPasswordAsync(resendModel);
+
+        isLoading = false;
+
+        if (result == "ok")
+            successMessage = "OTP resent! Check your email.";
+        else
+            errorMessage = "Failed to resend OTP. Please try again.";
+    }
+}

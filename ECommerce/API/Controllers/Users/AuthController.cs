@@ -1,7 +1,9 @@
-﻿using ECommerce.Application.Authentication.Interfaces;
+﻿using ECommerce.Application.Authentication.DTOs;
+using ECommerce.Application.Authentication.Interfaces;
 using ECommerce.Application.Users.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ECommerce.Application.Authentication.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -57,17 +59,23 @@ namespace ECommerce.API.Controllers.Users
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            var result = await _service.LoginAsync(dto);
-
-            SetTokenCookies(result.AccessToken, result.RefreshToken);
-
-
-            return Ok(new AuthResponseDto
+            try
             {
-                AccessToken = result.AccessToken,
-                RefreshToken = result.RefreshToken,
-                Role=result.Role
-            });
+                var result = await _service.LoginAsync(dto);
+
+                SetTokenCookies(result.AccessToken, result.RefreshToken);
+
+                return Ok(new AuthResponseDto
+                {
+                    AccessToken = result.AccessToken,
+                    RefreshToken = result.RefreshToken,
+                    Role = result.Role
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
 
@@ -100,7 +108,52 @@ namespace ECommerce.API.Controllers.Users
             });
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(
+            ForgotPasswordRequestDto dto)
+        {
+            try
+            {
+                await _service.ForgotPasswordAsync(dto);
+                return Ok();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
 
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp(VerifyOtpDto dto)
+        {
+            try
+            {
+                await _service.VerifyOtpAsync(dto);
+                return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+        {
+            try
+            {
+                await _service.ResetPasswordAsync(dto);
+                return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
 
     }
 }

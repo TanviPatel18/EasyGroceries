@@ -57,7 +57,14 @@ namespace ECommerce.Infrastructure.Repositories
                 .Find(x => x.RefreshToken == refreshToken)
                 .FirstOrDefaultAsync();
         }
-
+        public async Task UpdatePasswordAsync(string email, string newPasswordHash)
+        {
+            await _context.Customers.UpdateOneAsync(
+                c => c.Email == email,
+                Builders<Customer>.Update
+                    .Set(c => c.PasswordHash, newPasswordHash)
+                    .Set(c => c.UpdatedOn, DateTime.UtcNow));
+        }
     }
 }
 

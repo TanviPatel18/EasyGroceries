@@ -2,6 +2,7 @@
 using ECommerce.Application.Authentication.Services;
 using ECommerce.Application.Catalog.Interfaces;
 using ECommerce.Application.Catalog.Services;
+using ECommerce.Application.Email;
 using ECommerce.Application.HomePage.Interfaces;
 using ECommerce.Application.HomePage.Service;
 using ECommerce.Application.Sales.Interfaces;
@@ -30,7 +31,8 @@ builder.Services.Configure<MongoSettings>(
 
 builder.Services.AddSingleton<MongoDbContext>();
 
-
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
 
 // -------------------- Repositories --------------------
 
@@ -49,7 +51,7 @@ builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<ICartItemRepository, CartItemRepository>();
 builder.Services.AddScoped<IShipmentRepository, ShipmentRepository>();
 builder.Services.AddScoped<ICategoryImageRepository, CategoryImageRepository>();
-
+builder.Services.AddScoped<IPasswordResetTokenRepository,PasswordResetTokenRepository>();
 
 
 // -------------------- Services --------------------
@@ -68,7 +70,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IShipmentService, ShipmentService>();
 builder.Services.AddScoped<IBannerService, BannerService>();
 builder.Services.AddScoped<ICategoryImageService, CategoryImageService>();
-
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 
 // -------------------- JWT Authentication --------------------

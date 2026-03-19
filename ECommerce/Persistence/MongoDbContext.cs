@@ -1,8 +1,10 @@
 ﻿using ECommerce.Models.Catalog.Entities;
+using ECommerce.Models.Email.Entities;
 using ECommerce.Models.HomePage;
 using ECommerce.Models.Sales.Entities;
 using ECommerce.Models.Users.Entities;
 using Microsoft.Extensions.Options;
+using ECommerce.Models.Email.Entities;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -54,7 +56,7 @@ namespace ECommerce.Persistence
             _db.GetCollection<Order>("Orders");
 
         public IMongoCollection<OrderItem> OrderItems =>
-            _db.GetCollection<OrderItem>("OrderItems");
+            _db.GetCollection  <OrderItem>("OrderItems");
 
         public IMongoCollection<Shipment> Shipments =>
             _db.GetCollection<Shipment>("Shipments");
@@ -68,5 +70,8 @@ namespace ECommerce.Persistence
         public IMongoCollection<HeroBanner> HeroBanners =>
             _db.GetCollection<HeroBanner>("HeroBanners");
 
+      
+        public IMongoCollection<PasswordResetToken> PasswordResetTokens =>
+            _db.GetCollection<PasswordResetToken>("PasswordResetTokens");
     }
 }

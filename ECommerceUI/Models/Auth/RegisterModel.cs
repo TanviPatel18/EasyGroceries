@@ -4,21 +4,24 @@ namespace ECommerceUI.Models.Auth
 {
     public class RegisterModel
     {
-        [Required] public string FirstName { get; set; }
-        [Required] public string LastName { get; set; }
+        [Required(ErrorMessage = "First name is required")]
+        public string FirstName { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Last name is required")]
+        public string LastName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Please enter a valid email address")]
-        public string Email { get; set; }
+        [EmailAddress(ErrorMessage = "Invalid email")]
+        public string Email { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Phone is required")]
+        public string Phone { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Minimum 6 characters")]
+        public string Password { get; set; } = string.Empty;
 
-        [Phone(ErrorMessage = "Invalid phone number")]
-        public string Phone { get; set; }
-
-
-        [Required] public string Password { get; set; }
-        [Required] public string ConfirmPassword { get; set; }
+        [Required(ErrorMessage = "Please confirm password")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

@@ -17,5 +17,6 @@ namespace ECommerce.Models.Interfaces
         Task SoftDeleteByEmailAsync(string email);
         Task<Customer> GetByRefreshTokenAsync(string refreshToken);
 
+        Task UpdatePasswordAsync(string email, string newPasswordHash);
     }
 }

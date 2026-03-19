@@ -1,0 +1,120 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@inject IJSRuntime JS
+@layout AuthLayout
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ECommerceUI.Services.AuthService AuthService
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <h2 class="auth-main-title">WELCOME, PLEASE SIGN IN!</h2>
+
+        <div class="auth-body">
+
+            @* ── CHANGE 1: show reset success message ── *@
+            @if (resetSuccess)
+            {
+                <div class="auth-message success">
+                    ✅ Password reset successful! Please login.
+                </div>
+            }
+
+            @* ── CHANGE 2: show login error ── *@
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="auth-message error">@errorMessage</div>
+            }
+
+            <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="auth-input">
+                    <span class="icon">✉</span>
+                    <InputText @bind-Value="loginModel.Email"
+                               placeholder="Email address" />
+                </div>
+
+                <div class="auth-input">
+                    <span class="icon">🔒</span>
+                    <InputText @bind-Value="loginModel.Password"
+                               type="password"
+                               placeholder="Password" />
+                </div>
+
+                <div class="auth-options">
+                    <label>
+                        <input type="checkbox" /> Remember me?
+                    </label>
+                    @* ── CHANGE 3: update forgot password link ── *@
+                    <a href="/forgot-password">Forgot password?</a>
+                </div>
+
+                <div class="auth-button-area">
+                    @* ── CHANGE 4: add loading state ── *@
+                    <button class="auth-btn" type="submit"
+                            disabled="@isLoading">
+                        @(isLoading ? "LOGGING IN..." : "LOG IN")
+                    </button>
+                </div>
+
+                <div style="text-align:center;margin-top:10px;">
+                    <a href="/register">New Customer? Register</a>
+                </div>
+
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+    private bool resetSuccess = false;
+
+    @* ── CHANGE 5: read reset=success from URL ── *@
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.ContainsKey("reset") &&
+            query["reset"] == "success")
+        {
+            resetSuccess = true;
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+
+        var result = await AuthService.LoginAsync(loginModel);
+
+        isLoading = false;
+
+        if (result == null)
+        {
+            @* ── CHANGE 6: show error instead of silent fail ── *@
+            errorMessage = "Invalid email or password.";
+            return;
+        }
+
+        await JS.InvokeVoidAsync(
+            "localStorage.setItem", "role", result.Role);
+
+        if (AuthStateProvider is CustomAuthStateProvider provider)
+            provider.MarkUserAsAuthenticated(result.Role);
+
+        if (result.Role == "Admin")
+            Navigation.NavigateTo("/admin/products", true);
+        else
+            Navigation.NavigateTo("/", true);
+    }
+}
