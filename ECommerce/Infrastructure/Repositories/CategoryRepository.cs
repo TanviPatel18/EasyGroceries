@@ -74,5 +74,23 @@ namespace ECommerce.Infrastructure.Repositories
         }
 
 
+        public async Task<Category> GetByNameOrIdAsync(string id, string name)
+        {
+            var builder = Builders<Category>.Filter;
+            var filter = builder.Eq(x => x.IsDeleted, false);
+
+            if (!string.IsNullOrEmpty(id))
+            {
+                filter &= builder.Eq(x => x.Id, id);
+            }
+            else if (!string.IsNullOrEmpty(name))
+            {
+                filter &= builder.Regex(x => x.Name,
+                    new MongoDB.Bson.BsonRegularExpression(name, "i"));
+            }
+
+            return await _collection.Find(filter).FirstOrDefaultAsync();
+        }
+
     }
 }

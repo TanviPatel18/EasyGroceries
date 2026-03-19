@@ -11,6 +11,7 @@ namespace ECommerce.Models.Interfaces
 {
     public interface IProductRepository
     {
+        Task<List<Product>> GetByCategoryIdAsync(string categoryId);
         Task CreateAsync(Product product);
         Task UpdateAsync(Product product);
         Task DeleteAsync(string id);

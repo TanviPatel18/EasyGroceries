@@ -69,5 +69,12 @@ namespace ECommerce.API.Controllers.Catalog
 
             return Ok(dto);
         }
+
+        [HttpPost("filter-products")]
+        public async Task<IActionResult> GetProductsByCategory([FromBody] CategoryFilterDto dto)
+        {
+            var result = await _categoryService.GetProductsByCategoryAsync(dto);
+            return Ok(result);
+        }
     }
 }

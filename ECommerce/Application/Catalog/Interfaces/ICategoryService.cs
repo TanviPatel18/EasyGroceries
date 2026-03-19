@@ -16,5 +16,6 @@ namespace ECommerce.Application.Catalog.Interfaces
         Task<List<CategoryDto>> GetAllAsync();
         Task<List<CategoryDto>> SearchAsync(CategorySearchDto dto);
 
+        Task<List<ProductDto>> GetProductsByCategoryAsync(CategoryFilterDto dto);
     }
 }

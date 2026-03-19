@@ -17,9 +17,12 @@ namespace ECommerce.Application.Catalog.Services
     {
         private readonly ICategoryRepository _repo;
 
-        public  CategoryService(ICategoryRepository repo)
+        private readonly IProductRepository _productRepo;
+
+        public CategoryService(ICategoryRepository repo, IProductRepository productRepo)
         {
             _repo = repo;
+            _productRepo = productRepo;
         }
         public async Task<List<CategoryDto>> GetAllAsync()
         {
@@ -79,5 +82,31 @@ namespace ECommerce.Application.Catalog.Services
         {
             return await _repo.GetByIdAsync(id);
         }
+
+        public async Task<List<ProductDto>> GetProductsByCategoryAsync(CategoryFilterDto dto)
+        {
+            // Step 1: Get Category by Id or Name
+            var category = await _repo.GetByNameOrIdAsync(dto.Id, dto.Name);
+
+            if (category == null)
+                throw new Exception("Category not found");
+
+            // Step 2: Get Products
+            var products = await _productRepo.GetByCategoryIdAsync(category.Id);
+
+            // Step 3: Map to DTO
+            return products.Select(p => new ProductDto
+            {
+                Id = p.Id,
+                ProductName = p.ProductName,
+                SKU = p.SKU,
+                Price = p.Price,
+                StockQuantity = p.StockQuantity,
+                Published = p.Published,
+                ProductType = p.ProductType,
+                ImageUrls = p.ImageUrls ?? new List<string>()
+            }).ToList();
+        }
+
     }
 }

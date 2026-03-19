@@ -38,7 +38,7 @@ namespace ECommerce.Infrastructure.Repositories
         {
             var update = Builders<Product>.Update.Set("IsDeleted", true);
             await _products.UpdateOneAsync(
-                Builders<Product>.Filter.Eq("_id", id),
+                Builders<Product>.Filter.Eq(x => x.Id, id),
                 update
             );
         }
@@ -78,5 +78,14 @@ namespace ECommerce.Infrastructure.Repositories
             return await _products.Find(filter).ToListAsync();
         }
 
+        public async Task<List<Product>> GetByCategoryIdAsync(string categoryId)
+        {
+            var filter = Builders<Product>.Filter.And(
+                Builders<Product>.Filter.Eq("CategoryId", categoryId),
+                Builders<Product>.Filter.Eq("IsDeleted", false)
+            );
+
+            return await _products.Find(filter).ToListAsync();
+        }
     }
 }

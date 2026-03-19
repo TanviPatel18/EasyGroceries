@@ -17,5 +17,6 @@ namespace ECommerce.Models.Interfaces
         Task<Category> GetByIdAsync(string id);
         Task UpdateAsync(Category category);
 
+        Task<Category> GetByNameOrIdAsync(string id, string name);
     }
 }
