@@ -93,6 +93,7 @@
     private async Task HandleLogin()
     {
         errorMessage = string.Empty;
+        resetSuccess = false;
         isLoading = true;
 
         var result = await AuthService.LoginAsync(loginModel);

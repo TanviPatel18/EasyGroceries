@@ -30,6 +30,7 @@ namespace ECommerce.Models.Catalog.Entities
         public DateTime CreatedOn { get; set; }
         public DateTime? UpdatedOn { get; set; }
 
+        [BsonRepresentation(BsonType.ObjectId)]
         public string VendorId { get; set; }
 
         public decimal OldPrice { get; set; }

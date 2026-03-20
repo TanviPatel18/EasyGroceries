@@ -20,7 +20,7 @@ namespace ECommerceUI.Models.Catalog
         public string? VendorName { get; set; }
 
         public bool Published { get; set; }
-
+        public string CategoryId { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public decimal OldPrice { get; set; }
         public decimal ProductCost { get; set; }

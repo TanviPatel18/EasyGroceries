@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ECommerce.Persistence;
+using MongoDB.Driver;
 
 namespace ECommerce.API.Controllers.Catalog
 {
@@ -7,21 +9,47 @@ namespace ECommerce.API.Controllers.Catalog
     public class ProductImageController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;
+        private readonly MongoDbContext _db;
 
-        public ProductImageController(IWebHostEnvironment env)
+        public ProductImageController(
+            IWebHostEnvironment env,
+            MongoDbContext db)
         {
             _env = env;
+            _db = db;
         }
 
-        // UPLOAD MULTIPLE IMAGES
         [HttpPost("upload")]
-        public async Task<IActionResult> Upload([FromForm(Name = "file")] List<IFormFile> files)
+        public async Task<IActionResult> Upload(
+            [FromForm(Name = "file")] List<IFormFile> files,
+            [FromQuery] string categoryId = "")
         {
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded");
 
-            var uploadsFolder = Path.Combine(_env.WebRootPath, "images/products");
+            // ── get category folder name from DB ──
+            var folderName = "products";
 
+            if (!string.IsNullOrEmpty(categoryId))
+            {
+                var category = await _db.Categories
+                    .Find(c => c.Id == categoryId)
+                    .FirstOrDefaultAsync();
+
+                if (category != null)
+                {
+                    folderName = "products/" +
+                        category.Name
+                            .ToLower()
+                            .Trim()
+                            .Replace(" ", "-");
+                }
+            }
+
+            var uploadsFolder = Path.Combine(
+                _env.WebRootPath, "images", folderName);
+
+            // ── auto create folder if not exists ──
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
@@ -29,19 +57,20 @@ namespace ECommerce.API.Controllers.Catalog
 
             foreach (var file in files)
             {
-                var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+                var originalName = file.FileName ?? "image";
+                var fileName = Path.GetFileName(originalName);
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
-                using var stream = new FileStream(filePath, FileMode.Create);
+                using var stream = new FileStream(
+                    filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
 
-                resultUrls.Add($"images/products/{fileName}");
+                resultUrls.Add($"images/{folderName}/{fileName}");
             }
 
             return Ok(resultUrls.Select(url => new { imageUrl = url }));
         }
 
-        // REMOVE IMAGE
         [HttpDelete("remove")]
         public IActionResult Remove([FromQuery] string imageUrl)
         {

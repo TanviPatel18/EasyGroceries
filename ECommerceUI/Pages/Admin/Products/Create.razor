@@ -295,7 +295,7 @@
     }
 
     async Task SaveProduct()
-{
+    {
     var confirm = await JS.InvokeAsync<bool>(
         "confirm",
         "Are you sure you want to create this product?");
@@ -334,30 +334,59 @@
 
     foreach (var file in e.GetMultipleFiles())
     {
-        var fileContent = new StreamContent(file.OpenReadStream(10_000_000));
-        fileContent.Headers.ContentType =
-            new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        var fileContent = new StreamContent(
+            file.OpenReadStream(10_000_000));
 
-        content.Add(fileContent, "file", file.Name); // IMPORTANT: "files"
+        fileContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(
+                file.ContentType);
+
+        content.Add(fileContent, "file", file.Name);
     }
 
     var response = await Http.PostAsync(
-        "api/admin/productimage/upload",
-        content);
+    $"api/admin/productimage/upload?categoryId={product.CategoryId}",
+    content);
 
     if (response.IsSuccessStatusCode)
     {
-        var result = await response.Content
-            .ReadFromJsonAsync<List<ImageResponse>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        Console.WriteLine("UPLOAD RESPONSE: " + raw);
+
+        try
+        {
+            // try list of objects
+            var result = System.Text.Json.JsonSerializer
+                .Deserialize<List<ImageResponse>>(raw,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
 
             if (result != null)
-            {
                 foreach (var img in result)
-                {
-                    product.ImageUrls.Add(img.imageUrl);
-                }
+                    if (!string.IsNullOrEmpty(img.imageUrl))
+                        product.ImageUrls.Add(img.imageUrl);
+        }
+        catch
+        {
+            try
+            {
+                // try list of strings
+                var result = System.Text.Json.JsonSerializer
+                    .Deserialize<List<string>>(raw);
+                if (result != null)
+                    foreach (var img in result)
+                        product.ImageUrls.Add(img);
             }
-    
+            catch
+            {
+                // try plain string
+                var cleaned = raw.Trim('"').Trim();
+                if (!string.IsNullOrEmpty(cleaned))
+                    product.ImageUrls.Add(cleaned);
+            }
+        }
     }
 }
 

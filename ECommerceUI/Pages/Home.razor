@@ -130,8 +130,13 @@
         categories = await Http.GetFromJsonAsync<List<CategoryDto>>
         ("api/catalog/categories/GetAll");
 
-        products = await Http.GetFromJsonAsync<List<ProductDto>>
+        var allProducts = await Http.GetFromJsonAsync<List<ProductDto>>
         ("api/catalog/products/GetAll");
+        var rng = new Random();
+        products = allProducts
+            .OrderBy(x => rng.Next())
+            .Take(12)
+            .ToList();
 
         banners = await Http.GetFromJsonAsync<List<HeroBannerDto>>
         ("api/banners");
