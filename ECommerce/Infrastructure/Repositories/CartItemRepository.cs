@@ -52,5 +52,20 @@ namespace ECommerce.Infrastructure.Repositories
                 update);
         }
 
+        public async Task UpdateQuantityAsync(
+                string cartId, string productId, int quantity)
+        {
+            var update = Builders<ShoppingCartItem>
+                .Update
+                .Set(x => x.Quantity, quantity)
+                .Set(x => x.UpdatedOn, DateTime.UtcNow);
+
+            await _collection.UpdateOneAsync(
+                x => x.CartId == cartId &&
+                     x.ProductId == productId &&
+                     !x.IsDeleted,
+                update);
+        }
+
     }
 }

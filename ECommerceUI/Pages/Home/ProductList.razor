@@ -1,5 +1,6 @@
 ﻿@page "/products/{CategoryId}"
 @inject HttpClient Http
+@inject CartService CartSvc
 @inject NavigationManager Navigation
 @using ECommerceUI.Models.Catalog
 @using System.Text.Json
@@ -179,11 +180,12 @@
                                     }
                                 </div>
                                 <div class="pl-free-del">Free Delivery</div>
-                                <button class="pl-cart-btn"
-                                        disabled="@(product.StockQuantity <= 0)">
-                                    @(product.StockQuantity <= 0
-                                        ? "Out of Stock"
-                                        : "Add to Cart")
+                                @* // ✅ AFTER — with onclick + Buy Now after adding *@
+                                <button class="pl-cart-btn @(IsInCart(product) ? "in-cart" : "")"
+                                        disabled="@(product.StockQuantity <= 0)"
+                                        @onclick="() => AddToCart(product)">
+                                    @(product.StockQuantity <= 0 ? "Out of Stock"
+                                        : IsInCart(product) ? "Buy Now" : "Add to Cart")
                                 </button>
                             </div>
 
@@ -344,4 +346,29 @@
 
     bool IsInWishlist(ProductDto product)
         => wishlist.Contains(product.Id);
+
+    // code for add to cart
+
+    // add this
+    HashSet<string> cart = new();
+
+    async Task AddToCart(ProductDto product)
+    {
+        if (cart.Contains(product.Id))
+        {
+            // already in cart — go to cart page
+            Navigation.NavigateTo("/cart");
+            return;
+        }
+
+        var success = await CartSvc.AddAsync(product.Id, 1);
+        if (success)
+        {
+            cart.Add(product.Id);
+            StateHasChanged();
+        }
+    }
+
+    bool IsInCart(ProductDto product)
+        => cart.Contains(product.Id);
 }

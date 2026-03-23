@@ -55,5 +55,19 @@ namespace ECommerce.API.Controllers.Sales
             await _service.ClearCartAsync(GetCustomerId());
             return Ok("Cart cleared");
         }
+
+
+        [HttpPut("update-quantity")]
+        public async Task<IActionResult> UpdateQuantity(
+            [FromBody] CartItemDto dto)
+        {
+            await _service.UpdateQuantityAsync(
+                GetCustomerId(),
+                dto.ProductId,
+                dto.Quantity);
+            return Ok("Quantity updated");
+        }
+
+        
     }
 }

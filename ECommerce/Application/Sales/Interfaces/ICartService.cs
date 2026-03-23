@@ -5,11 +5,9 @@ namespace ECommerce.Application.Sales.Interfaces
     public interface ICartService
     {
         Task AddToCartAsync(string customerId, string productId, int quantity);
-
-        Task<List<CartItemDto>> GetMyCartAsync(string customerId);
-
+        Task<List<CartItemDetailDto>> GetMyCartAsync(string customerId); // ← changed
         Task RemoveFromCartAsync(string customerId, string productId);
-
         Task ClearCartAsync(string customerId);
+        Task UpdateQuantityAsync(string customerId, string productId, int quantity); // ← new
     }
 }

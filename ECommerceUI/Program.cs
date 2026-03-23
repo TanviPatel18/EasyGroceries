@@ -46,5 +46,6 @@ builder.Services.AddScoped<ReturnRequestService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
         sp.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddScoped<WishlistService>();
-
+// ✅ Add this line
+builder.Services.AddScoped<CartService>();
 await builder.Build().RunAsync();

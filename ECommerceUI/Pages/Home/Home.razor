@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject CartService CartSvc
 @using ECommerceUI.Models.Catalog
 @using ECommerceUI.Models.HomePage
 @using ECommerceUI.Services.other
@@ -95,7 +96,10 @@
                                 <i class="@(IsInWishlist(product) ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                             </button>
 
-                            <button class="add-btn">Add to Cart</button>
+                            <button class="add-btn @(IsInCart(product) ? "in-cart" : "")"
+                                    @onclick="() => AddToCart(product)">
+                                @(IsInCart(product) ? "Buy Now" : "Add to Cart")
+                            </button>
 
                         </div>
 
@@ -131,30 +135,46 @@
 
     protected override async Task OnInitializedAsync()
     {
-        categories = await Http.GetFromJsonAsync<List<CategoryDto>>
-        ("api/catalog/categories/GetAll");
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
 
-        var allProducts = await Http.GetFromJsonAsync<List<ProductDto>>
-        ("api/catalog/products/GetAll");
+        // ✅ Load all at once in parallel
+        var categoriesTask = Http.GetFromJsonAsync<List<CategoryDto>>
+            ("api/catalog/categories/GetAll");
+
+        var productsTask = Http.GetFromJsonAsync<List<ProductDto>>
+            ("api/catalog/products/GetAll");
+
+        var bannersTask = Http.GetFromJsonAsync<List<HeroBannerDto>>
+            ("api/banners");
+
+        await Task.WhenAll(categoriesTask, productsTask, bannersTask);
+
+        categories = categoriesTask.Result ?? new();
+        banners = bannersTask.Result ?? new();
+
         var rng = new Random();
-        products = allProducts
+        products = (productsTask.Result ?? new())
             .OrderBy(x => rng.Next())
             .Take(12)
             .ToList();
 
-        // load wishlist state
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-
+        // ✅ Load wishlist and cart in parallel
         if (authState.User.Identity.IsAuthenticated)
         {
-            var list = await WishlistSvc.GetWishlistAsync();
+            var wishlistTask = WishlistSvc.GetWishlistAsync();
+            var cartTask = CartSvc.GetCartAsync();
 
-            wishlist = list
+            await Task.WhenAll(wishlistTask, cartTask);
+
+            wishlist = wishlistTask.Result
+                .Select(x => x.ProductId)
+                .ToHashSet();
+
+            cart = cartTask.Result
                 .Select(x => x.ProductId)
                 .ToHashSet();
         }
-        banners = await Http.GetFromJsonAsync<List<HeroBannerDto>>
-        ("api/banners");
 
         StartSlider();
         StartCategorySlider();
@@ -270,5 +290,28 @@
 
     bool IsInWishlist(ProductDto product)
         => wishlist.Contains(product.Id);
+
+     // add to cart ui
+
+    HashSet<string> cart = new();
+
+    async Task AddToCart(ProductDto product)
+    {
+        if (cart.Contains(product.Id))
+        {
+            Navigation.NavigateTo("/cart");
+            return;
+        }
+
+        var success = await CartSvc.AddAsync(product.Id, 1);
+        if (success)
+        {
+            cart.Add(product.Id);
+            StateHasChanged();
+        }
+    }
+
+    bool IsInCart(ProductDto product)
+        => cart.Contains(product.Id);
 
 }

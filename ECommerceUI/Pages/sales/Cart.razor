@@ -1,0 +1,205 @@
+﻿
+@page "/cart"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using ECommerceUI.Services.other
+@inject CartService CartSvc
+@using ECommerceUI.Models.Cart
+@attribute [Authorize]
+
+<div class="cart-page">
+
+    <div class="cart-header">
+        <button class="cart-back-btn" @onclick="GoBack">
+            &#8592; Back
+        </button>
+        <h2 class="cart-title">My Cart</h2>
+        <span class="cart-count">@cartItems.Count item(s)</span>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="cart-loading">Loading cart...</div>
+    }
+    else if (!cartItems.Any())
+    {
+        <div class="cart-empty">
+            <div class="cart-empty-icon">&#128722;</div>
+            <h3>Your cart is empty</h3>
+            <p>Add items to your cart to continue shopping.</p>
+            <button class="cart-shop-btn"
+                    @onclick='() => Navigation.NavigateTo("/")'>
+                Continue Shopping
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="cart-layout">
+
+            <div class="cart-items">
+                @foreach (var item in cartItems)
+                {
+                    <div class="cart-item">
+
+                        <div class="cart-item-img">
+                            @if (item.ImageUrls != null && item.ImageUrls.Any())
+                            {
+                                <img src="@($"https://localhost:5001/{item.ImageUrls.First()}")"
+                                     alt="@item.ProductName" />
+                            }
+                            else
+                            {
+                                <img src="/images/no-image.png" alt="no image" />
+                            }
+                        </div>
+
+                        <div class="cart-item-info">
+
+                            <div class="cart-item-name">@item.ProductName</div>
+
+                            <div class="cart-item-price-row">
+                                <span class="cart-item-price">
+                                    &#8377;@item.Price
+                                </span>
+                                @if (item.OldPrice > item.Price)
+                                {
+                                    <span class="cart-item-old">
+                                        &#8377;@item.OldPrice
+                                    </span>
+                                    <span class="cart-item-disc">
+                                        @(Math.Round((1 - item.Price / item.OldPrice) * 100))% off
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="cart-item-actions">
+                                <div class="cart-qty">
+                                    <button class="cart-qty-btn"
+                                            @onclick="() => DecreaseQty(item)">
+                                        -
+                                    </button>
+                                    <span class="cart-qty-num">@item.Quantity</span>
+                                    <button class="cart-qty-btn"
+                                            @onclick="() => IncreaseQty(item)">
+                                        +
+                                    </button>
+                                </div>
+                                <button class="cart-remove-btn"
+                                        @onclick="() => RemoveItem(item)">
+                                    REMOVE
+                                </button>
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+            </div>
+
+            <div class="cart-summary">
+
+                <div class="cart-summary-title">Price Details</div>
+
+                <div class="cart-summary-row">
+                    <span>Price (@cartItems.Count items)</span>
+                    <span>&#8377;@TotalPrice</span>
+                </div>
+
+                @if (HasDiscount)
+                {
+                    <div class="cart-summary-row discount">
+                        <span>Discount</span>
+                        <span>- &#8377;@TotalDiscount</span>
+                    </div>
+                }
+
+                <div class="cart-summary-row">
+                    <span>Delivery</span>
+                    <span class="free">FREE</span>
+                </div>
+
+                <div class="cart-summary-divider"></div>
+
+                <div class="cart-summary-total">
+                    <span>Total Amount</span>
+                    <span>&#8377;@TotalPrice</span>
+                </div>
+
+                @if (HasDiscount)
+                {
+                    <div class="cart-summary-savings">
+                        You save &#8377;@TotalDiscount on this order
+                    </div>
+                }
+
+                <button class="cart-checkout-btn"
+                        @onclick='() => Navigation.NavigateTo("/checkout")'>
+                    Place Order
+                </button>
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    List<CartItemDto> cartItems = new();
+    bool isLoading = true;
+
+    decimal TotalPrice => cartItems.Sum(x => x.Price * x.Quantity);
+    decimal TotalDiscount => cartItems
+        .Where(x => x.OldPrice > x.Price)
+        .Sum(x => (x.OldPrice - x.Price) * x.Quantity);
+    bool HasDiscount => cartItems.Any(x => x.OldPrice > x.Price);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+    }
+
+    async Task LoadCart()
+    {
+        isLoading = true;
+        cartItems = await CartSvc.GetCartAsync();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    async Task IncreaseQty(CartItemDto item)
+    {
+        item.Quantity++;
+        await CartSvc.UpdateQuantityAsync(item.ProductId, item.Quantity);
+        StateHasChanged();
+    }
+
+    async Task DecreaseQty(CartItemDto item)
+    {
+        if (item.Quantity <= 1)
+        {
+            await RemoveItem(item);
+            return;
+        }
+        item.Quantity--;
+        await CartSvc.UpdateQuantityAsync(item.ProductId, item.Quantity);
+        StateHasChanged();
+    }
+
+    async Task RemoveItem(CartItemDto item)
+    {
+        await CartSvc.RemoveAsync(item.ProductId);
+        cartItems.RemoveAll(x => x.ProductId == item.ProductId);
+        StateHasChanged();
+    }
+
+    async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+}

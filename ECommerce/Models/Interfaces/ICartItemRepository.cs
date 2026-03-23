@@ -11,5 +11,7 @@ namespace ECommerce.Models.Interfaces
         Task RemoveItemAsync(string cartId, string productId);
 
         Task ClearCartAsync(string cartId);
+
+        Task UpdateQuantityAsync(string cartId, string productId, int quantity);
     }
 }
