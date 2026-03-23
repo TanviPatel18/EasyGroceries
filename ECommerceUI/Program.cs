@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Text.Json;
+using ECommerceUI.Services.other;
 using System.Text.Json.Serialization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -13,15 +14,19 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+// ✅ Register handler first
+builder.Services.AddScoped<AuthMessageHandler>();
+
+// ✅ Default HttpClient WITH auth handler
 builder.Services.AddScoped(sp =>
 {
-    var options = new JsonSerializerOptions
+    var js = sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>();
+    var handler = new AuthMessageHandler(js)
     {
-        PropertyNameCaseInsensitive = true
+        InnerHandler = new HttpClientHandler()
     };
-    options.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: true));
 
-    return new HttpClient
+    return new HttpClient(handler)
     {
         BaseAddress = new Uri("https://localhost:5001/")
     };
@@ -40,6 +45,6 @@ builder.Services.AddScoped<ShipmentService>();
 builder.Services.AddScoped<ReturnRequestService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
         sp.GetRequiredService<CustomAuthStateProvider>());
-
+builder.Services.AddScoped<WishlistService>();
 
 await builder.Build().RunAsync();

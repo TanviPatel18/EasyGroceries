@@ -40,7 +40,7 @@ namespace ECommerce.API.Controllers.Users
             Response.Cookies.Append("jwt", accessToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
+                Secure = true,
                 SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddHours(2)
             });
@@ -48,7 +48,7 @@ namespace ECommerce.API.Controllers.Users
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
+                Secure = true,
                 SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7)
             });

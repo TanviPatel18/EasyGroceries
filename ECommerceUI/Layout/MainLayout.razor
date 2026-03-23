@@ -25,8 +25,17 @@
 
         <!-- RIGHT MENU -->
         <div class="nav-icons">
-            <NavLink href="/wishlist">❤️</NavLink>
-            <NavLink href="/cart">🛒 Cart</NavLink>
+            <NavLink href="/wishlist" class="nav-wish-icon">
+                ❤️
+                @* @if (wishlistCount > 0)
+                {
+                    <span class="nav-wish-count">@wishlistCount</span>
+                } *@
+            </NavLink>
+            <NavLink href="/cart">
+                <i class="fa-solid fa-cart-shopping"></i> Cart
+            </NavLink>
+
             <AuthorizeView>
 
         <Authorized>
@@ -65,7 +74,7 @@
 </div>
 
 @code {
-
+    // int wishlistCount = 0;
     List<CategoryDto> categories = new();
 
     string searchText = "";
@@ -74,6 +83,14 @@
     {
         categories = await Http.GetFromJsonAsync<List<CategoryDto>>
         ("api/catalog/categories/GetAll");
+
+        // try
+        // {
+        //     var items = await Http
+        //         .GetFromJsonAsync<List<object>>("api/wishlist");
+        //     wishlistCount = items?.Count ?? 0;
+        // }
+        // catch { wishlistCount = 0; }
     }
 
     void SearchProduct()
@@ -83,7 +100,7 @@
 
     void OpenCategory(string id)
     {
-        Nav.NavigateTo($"/products?categoryId={id}");
+        Navigation.NavigateTo($"/products/{id}");
     }
 
     async Task Logout()

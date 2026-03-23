@@ -30,6 +30,7 @@ namespace ECommerce.API.Controllers.Catalog
                 ProductName = p.ProductName,
                 SKU = p.SKU,
                 Price = p.Price,
+                OldPrice = p.OldPrice,
                 StockQuantity = p.StockQuantity,
                 Published = p.Published,
                 ProductType = p.ProductType,

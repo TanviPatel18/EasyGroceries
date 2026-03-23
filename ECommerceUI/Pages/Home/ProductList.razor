@@ -1,0 +1,347 @@
+﻿@page "/products/{CategoryId}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using ECommerceUI.Models.Catalog
+@using System.Text.Json
+@inject WishlistService WishlistSvc
+@using ECommerceUI.Services
+@using ECommerceUI.Services.other
+
+<div class="pl-page">
+    <div class="pl-container">
+
+        <!-- SIDEBAR -->
+        <div class="pl-sidebar">
+            <div class="pl-sidebar-title">Filters</div>
+            <div class="pl-sidebar-count">@filteredProducts.Count Products</div>
+
+            <!-- PRICE -->
+            <div class="pl-filter-section">
+                <span class="pl-filter-name">Price Range</span>
+                <div class="pl-price-inputs">
+                    <input type="number" placeholder="Min"
+                           class="pl-price-input"
+                           @bind="minPrice" />
+                    <span class="pl-price-sep">—</span>
+                    <input type="number" placeholder="Max"
+                           class="pl-price-input"
+                           @bind="maxPrice" />
+                </div>
+                <button class="pl-apply-btn" @onclick="ApplyFilters">
+                    Apply
+                </button>
+                <button class="pl-clear-btn" @onclick="ClearFilters">
+                    Clear All
+                </button>
+            </div>
+
+            <!-- SORT -->
+            <div class="pl-filter-section">
+                <span class="pl-filter-name">Sort By</span>
+                <label class="pl-sort-option">
+                    <input type="radio" name="sort"
+                           value="new"
+                           checked="@(sortBy == "new")"
+                           @onchange='() => { sortBy = "new"; ApplyFilters(); }' />
+                    Newest First
+                </label>
+                <label class="pl-sort-option">
+                    <input type="radio" name="sort"
+                           value="low"
+                           checked="@(sortBy == "low")"
+                           @onchange='() => { sortBy = "low"; ApplyFilters(); }' />
+                    Price: Low to High
+                </label>
+                <label class="pl-sort-option">
+                    <input type="radio" name="sort"
+                           value="high"
+                           checked="@(sortBy == "high")"
+                           @onchange='() => { sortBy = "high"; ApplyFilters(); }' />
+                    Price: High to Low
+                </label>
+            </div>
+
+            <!-- AVAILABILITY -->
+            <div class="pl-filter-section">
+                <span class="pl-filter-name">Availability</span>
+                <label class="pl-sort-option">
+                    <input type="checkbox"
+                           @bind="inStockOnly"
+                           @bind:after="ApplyFilters" />
+                    In Stock Only
+                </label>
+            </div>
+
+        </div>
+
+        <!-- CONTENT -->
+        <div class="pl-content">
+
+            <!-- TOP BAR -->
+            <div class="pl-top-bar">
+                <div class="pl-top-left">
+                    <h3 class="pl-title">@categoryName</h3>
+                    <span class="pl-count">
+                        @filteredProducts.Count products
+                    </span>
+                </div>
+                <div class="pl-top-right">
+                    <input class="pl-search"
+                           placeholder="Search in @categoryName..."
+                           @oninput="OnSearch" />
+                    <div class="pl-view-toggle">
+                        <button class="pl-view-btn @(viewMode == "grid" ? "active" : "")"
+                                @onclick='() => viewMode = "grid"'>
+                            ⊞
+                        </button>
+                        <button class="pl-view-btn @(viewMode == "list" ? "active" : "")"
+                                @onclick='() => viewMode = "list"'>
+                            ☰
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCTS -->
+            @if (isLoading)
+            {
+                <p class="pl-loading">Loading products...</p>
+            }
+            else if (!filteredProducts.Any())
+            {
+                <p class="pl-empty">
+                    No products found. Try adjusting your filters.
+                </p>
+            }
+            else
+            {
+                <div class="pl-grid @(viewMode == "list" ? "pl-list-view" : "")">
+                    @{
+                        var newest = filteredProducts
+                            .OrderByDescending(p => p.CreatedOn)
+                            .Take(2)
+                            .Select(p => p.Id)
+                            .ToHashSet();
+                    }
+                    @foreach (var product in filteredProducts)
+                    {
+                        <div class="pl-card">
+
+                            @if (newest.Contains(product.Id))
+                            {
+                                <div class="pl-new-tag">NEW</div>
+                            }
+
+                            <div class="pl-img">
+                                @if (product.ImageUrls != null &&
+                                     product.ImageUrls.Any())
+                                {
+                                    <img src="@($"https://localhost:5001/{product.ImageUrls.First()}")"
+                                         alt="@product.ProductName" />
+                                }
+                                else
+                                {
+                                    <img src="/images/no-image.png"
+                                         alt="no image" />
+                                }
+
+                                <button class="pl-wish @(IsInWishlist(product) ? "active" : "")"
+                                        @onclick="() => ToggleWishlist(product)">
+                                    @(IsInWishlist(product) ? "♥" : "♡")
+                                </button>
+
+                                @if (product.StockQuantity <= 0)
+                                {
+                                    <div class="pl-out-overlay">
+                                        <div class="pl-out-label">
+                                            Out of Stock
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="pl-info">
+                                <div class="pl-name">
+                                    @product.ProductName
+                                </div>
+                                <div class="pl-price-row">
+                                    <span class="pl-price">
+                                        ₹@product.Price
+                                    </span>
+                                    @if (product.OldPrice > product.Price)
+                                    {
+                                        <span class="pl-old-price">
+                                            ₹@product.OldPrice
+                                        </span>
+                                        <span class="pl-discount">
+                                            @(Math.Round((1 - product.Price / product.OldPrice) * 100))% off
+                                        </span>
+                                    }
+                                </div>
+                                <div class="pl-free-del">Free Delivery</div>
+                                <button class="pl-cart-btn"
+                                        disabled="@(product.StockQuantity <= 0)">
+                                    @(product.StockQuantity <= 0
+                                        ? "Out of Stock"
+                                        : "Add to Cart")
+                                </button>
+                            </div>
+
+                            @if (viewMode == "list")
+                            {
+                                <div class="pl-list-act">
+                                    <button class="pl-cart-btn-list"
+                                            disabled="@(product.StockQuantity <= 0)">
+                                        @(product.StockQuantity <= 0
+                                            ? "Out of Stock"
+                                            : "Add to Cart")
+                                    </button>
+                                </div>
+                            }
+
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Parameter] public string CategoryId { get; set; }
+    [Parameter]
+    public string ProductId { get; set; }
+    List<ProductDto> allProducts = new();
+    List<ProductDto> filteredProducts = new();
+    string categoryName = string.Empty;
+    bool isLoading = true;
+
+    decimal minPrice = 0;
+    decimal maxPrice = 0;
+    string sortBy = "new";
+    bool inStockOnly = false;
+    string searchText = string.Empty;
+    string viewMode = "grid";
+
+    HashSet<string> wishlist = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        // get category name
+        try
+        {
+            var cat = await Http.GetFromJsonAsync<CategoryDto>(
+                $"api/catalog/categories/{CategoryId}");
+            categoryName = cat?.Name ?? "Products";
+        }
+        catch { categoryName = "Products"; }
+
+        // get products
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "api/catalog/categories/filter-products",
+                new { Id = CategoryId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                allProducts = await response.Content
+                    .ReadFromJsonAsync<List<ProductDto>>() ?? new();
+            }
+        }
+        catch { allProducts = new(); }
+
+        // ── ADD HERE — load wishlist state ──
+        var list = await WishlistSvc.GetWishlistAsync();
+
+        wishlist = list
+            .Select(x => x.ProductId)
+            .ToHashSet();
+
+        // ✅ AFTER
+        ApplyFilters();
+        isLoading = false;
+        StateHasChanged(); // ← add this line
+    
+    }
+
+    void ApplyFilters()
+    {
+        var result = allProducts
+            .Where(p => p.Published)
+            .ToList();
+
+        // search filter
+        if (!string.IsNullOrEmpty(searchText))
+            result = result
+                .Where(p => p.ProductName
+                    .Contains(searchText,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        // price filter
+        if (minPrice > 0)
+            result = result
+                .Where(p => p.Price >= minPrice).ToList();
+
+        if (maxPrice > 0)
+            result = result
+                .Where(p => p.Price <= maxPrice).ToList();
+
+        // stock filter
+        if (inStockOnly)
+            result = result
+                .Where(p => p.StockQuantity > 0).ToList();
+
+        // sort
+        if (sortBy == "new")
+            result = result
+                .OrderByDescending(p => p.CreatedOn)
+                .ToList();
+        else if (sortBy == "low")
+            result = result
+                .OrderBy(p => p.Price).ToList();
+        else if (sortBy == "high")
+            result = result
+                .OrderByDescending(p => p.Price).ToList();
+
+        filteredProducts = result;
+    }
+    void OnSearch(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    void ClearFilters()
+    {
+        minPrice = 0;
+        maxPrice = 0;
+        sortBy = "new";
+        inStockOnly = false;
+        searchText = string.Empty;
+        ApplyFilters();
+    }
+
+    async Task ToggleWishlist(ProductDto product)
+    {
+        if (wishlist.Contains(product.Id))
+        {
+            await WishlistSvc.RemoveAsync(product.Id);
+            wishlist.Remove(product.Id);
+        }
+        else
+        {
+            await WishlistSvc.AddAsync(product.Id);
+            wishlist.Add(product.Id);
+        }
+        StateHasChanged();
+    }
+
+    bool IsInWishlist(ProductDto product)
+        => wishlist.Contains(product.Id);
+}

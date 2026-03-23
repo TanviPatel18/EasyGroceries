@@ -4,19 +4,19 @@
 :root {
     --font-base: 'Inter', system-ui, -apple-system, sans-serif;
     /* Brand */
-    --color-primary: #6d28d9;
-    --color-primary-dark: #4c1d95;
-    --color-accent: #f59e0b;
-    --color-accent-dark: #d97706;
-    --color-price: #d97706;
+    --color-primary: #1e1e2e;
+    --color-primary-dark: #13131f;
+    --color-accent: #1e1e2e;
+    --color-accent-dark: #13131f;
+    --color-price: #1e1e2e;
     --color-danger: #e60023;
     /* Neutrals */
-    --color-bg: #ffffff;
-    --color-bg-section: #f8f7f4;
+    --color-bg: #f4f4f6;
+    --color-bg-section: #ededf2;
     --color-bg-card: #ffffff;
-    --color-border: #e8e7e4;
-    --color-text: #1c1b18;
-    --color-text-muted: #6e6e68;
+    --color-border: #e2e2e8;
+    --color-text: #1e1e2e;
+    --color-text-muted: #6e6e7e;
     /* Spacing */
     --sp-xs: 6px;
     --sp-sm: 12px;
@@ -28,8 +28,8 @@
     --radius-md: 12px;
     --radius-lg: 18px;
     /* Shadows */
-    --shadow-card: 0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.05);
-    --shadow-hover: 0 8px 24px rgba(0,0,0,0.10);
+    --shadow-card: 0 1px 4px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
+    --shadow-hover: 0 8px 24px rgba(30,30,46,0.10);
 }
 
 /* ===============================================================

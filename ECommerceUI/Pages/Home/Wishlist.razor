@@ -1,0 +1,184 @@
+﻿@page "/wishlist"
+@inject HttpClient Http
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using ECommerceUI.Services
+@using ECommerceUI.Models.wishlist
+@using ECommerceUI.Services.other
+@inject WishlistService WishlistSvc
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@attribute [Authorize]
+
+<div class="wl-page">
+
+    <div class="wl-header">
+        <button class="wl-back-btn" @onclick="GoBack">
+            &#8592; Back
+        </button>
+        <h2 class="wl-title">My Wishlist</h2>
+        <span class="wl-count">@wishlistItems.Count item(s)</span>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="wl-loading-wrap">
+            <p class="wl-loading">Loading wishlist...</p>
+        </div>
+    }
+    else if (!wishlistItems.Any())
+    {
+        <div class="wl-empty">
+            <div class="wl-empty-icon">♡</div>
+            <h3 class="wl-empty-title">Your wishlist is empty</h3>
+            <p class="wl-empty-msg">
+                Save items you love and come back to them anytime.
+            </p>
+            <button class="wl-shop-btn"
+                    @onclick='() => Navigation.NavigateTo("/")'>
+                Continue Shopping
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="wl-grid">
+            @foreach (var item in wishlistItems)
+            {
+                <div class="wl-card">
+
+                    <button class="wl-remove"
+                            @onclick="() => RemoveItem(item)"
+                            title="Remove">
+                        ✕
+                    </button>
+
+                    <div class="wl-img">
+                        @if (item.ImageUrls != null && item.ImageUrls.Any())
+                        {
+                            <img src="@($"https://localhost:5001/{item.ImageUrls.First()}")"
+                                 alt="@item.ProductName" />
+                        }
+                        else
+                        {
+                            <img src="/images/no-image.png" alt="no image" />
+                        }
+
+                        @if (item.StockQuantity <= 0)
+                        {
+                            <div class="wl-out-overlay">
+                                <span>Out of Stock</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="wl-info">
+
+                        <div class="wl-name">@item.ProductName</div>
+
+                        <div class="wl-price-row">
+                            <span class="wl-price">₹@item.Price</span>
+                            @if (item.OldPrice > item.Price)
+                            {
+                                <span class="wl-old-price">₹@item.OldPrice</span>
+                                <span class="wl-discount">
+                                    @(Math.Round((1 - item.Price / item.OldPrice) * 100))% off
+                                </span>
+                            }
+                        </div>
+
+                        <div class="wl-free-del">Free Delivery</div>
+
+                        <div class="wl-added-on">
+                            Added @item.AddedOn.ToString("dd MMM yyyy")
+                        </div>
+
+                        <button class="wl-cart-btn"
+                                disabled="@(item.StockQuantity <= 0)">
+                            @(item.StockQuantity <= 0 ? "Out of Stock" : "Add to Cart")
+                        </button>
+
+                    </div>
+
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+
+    List<WishlistItemDto> wishlistItems = new();
+    bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWishlist();
+    }
+
+    async Task LoadWishlist()
+    {
+        isLoading = true;
+        try
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Get, "api/wishlist");
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            var response = await Http.SendAsync(request);
+
+            await JS.InvokeVoidAsync("console.log",
+                "Status: " + response.StatusCode);
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            await JS.InvokeVoidAsync("console.log",
+                "Response: " + json);
+
+            if (response.IsSuccessStatusCode)
+            {
+                wishlistItems = System.Text.Json.JsonSerializer
+                    .Deserialize<List<WishlistItemDto>>(json,
+                    new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }) ?? new();
+
+                await JS.InvokeVoidAsync("console.log",
+                    "Items count: " + wishlistItems.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.log",
+                "Error: " + ex.Message);
+            wishlistItems = new();
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    async Task RemoveItem(WishlistItemDto item)
+    {
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Remove {item.ProductName} from wishlist?");
+
+        if (!confirm) return;
+
+        var success = await WishlistSvc.RemoveAsync(item.ProductId);
+
+        if (success)
+        {
+            wishlistItems.RemoveAll(x => x.ProductId == item.ProductId);
+            StateHasChanged();
+        }
+    }
+
+    async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+}

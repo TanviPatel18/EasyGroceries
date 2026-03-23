@@ -13,6 +13,8 @@ using ECommerce.Infrastructure.Extensions;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
 using ECommerce.Models.Interfaces;
+using ECommerce.Application.Wishlist.Interfaces;
+using ECommerce.Application.Wishlist.Services;
 using ECommerce.Models.Users.Entities;
 using ECommerce.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -52,7 +54,8 @@ builder.Services.AddScoped<ICartItemRepository, CartItemRepository>();
 builder.Services.AddScoped<IShipmentRepository, ShipmentRepository>();
 builder.Services.AddScoped<ICategoryImageRepository, CategoryImageRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository,PasswordResetTokenRepository>();
-
+builder.Services.AddScoped
+    <IWishlistRepository, WishlistRepository>();
 
 // -------------------- Services --------------------
 
@@ -71,7 +74,8 @@ builder.Services.AddScoped<IShipmentService, ShipmentService>();
 builder.Services.AddScoped<IBannerService, BannerService>();
 builder.Services.AddScoped<ICategoryImageService, CategoryImageService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-
+builder.Services.AddScoped
+    <IWishlistService, WishlistService>();
 
 // -------------------- JWT Authentication --------------------
 
@@ -99,7 +103,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                context.Token = context.Request.Cookies["jwt"];
+                var token = context.Request.Cookies["jwt"];
+
+                if (string.IsNullOrEmpty(token))
+                {
+                    var authHeader = context.Request.Headers["Authorization"]
+                        .FirstOrDefault();
+
+                    if (authHeader != null && authHeader.StartsWith("Bearer "))
+                    {
+                        token = authHeader.Substring("Bearer ".Length);
+                    }
+                }
+
+                context.Token = token;
                 return Task.CompletedTask;
             }
         };
@@ -145,6 +162,31 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "ECommerce API",
         Version = "v1"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Enter JWT token like: Bearer {your token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
     });
 });
 

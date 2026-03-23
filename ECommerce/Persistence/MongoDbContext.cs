@@ -1,10 +1,11 @@
 ﻿using ECommerce.Models.Catalog.Entities;
 using ECommerce.Models.Email.Entities;
+using ECommerce.Models.Email.Entities;
 using ECommerce.Models.HomePage;
 using ECommerce.Models.Sales.Entities;
 using ECommerce.Models.Users.Entities;
+using ECommerce.Models.Wishlist.Entities;
 using Microsoft.Extensions.Options;
-using ECommerce.Models.Email.Entities;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -70,7 +71,9 @@ namespace ECommerce.Persistence
         public IMongoCollection<HeroBanner> HeroBanners =>
             _db.GetCollection<HeroBanner>("HeroBanners");
 
-      
+        public IMongoCollection<WishlistItem> Wishlists =>
+      _db.GetCollection<WishlistItem>("Wishlists");
+
         public IMongoCollection<PasswordResetToken> PasswordResetTokens =>
             _db.GetCollection<PasswordResetToken>("PasswordResetTokens");
     }

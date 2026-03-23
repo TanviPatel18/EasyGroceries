@@ -107,9 +107,10 @@
             return;
         }
 
-        await JS.InvokeVoidAsync(
-            "localStorage.setItem", "role", result.Role);
-
+        // ✅ AFTER — use AccessToken
+        await JS.InvokeVoidAsync("localStorage.setItem", "token", result.AccessToken);
+        await JS.InvokeVoidAsync("localStorage.setItem", "role", result.Role);
+        
         if (AuthStateProvider is CustomAuthStateProvider provider)
             provider.MarkUserAsAuthenticated(result.Role);
 

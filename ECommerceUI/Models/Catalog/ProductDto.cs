@@ -12,7 +12,9 @@ namespace ECommerceUI.Models.Catalog
         public bool Published { get; set; }
         //public ProductType ProductType { get; set; }    
         public List<string> ImageUrls { get; set; } = new();
+        public DateTime CreatedOn { get; set; }
 
+        public decimal OldPrice { get; set; }
     }
 }
 

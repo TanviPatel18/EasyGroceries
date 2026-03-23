@@ -3,7 +3,11 @@
 @inject NavigationManager Navigation
 @using ECommerceUI.Models.Catalog
 @using ECommerceUI.Models.HomePage
+@using ECommerceUI.Services.other
 @using Microsoft.AspNetCore.Components.Authorization
+@inject WishlistService WishlistSvc
+@using ECommerceUI.Services
+
 
 <div class="">
 
@@ -121,7 +125,7 @@
     List<CategoryDto> categories = new();
     List<ProductDto> products = new();
     List<HeroBannerDto> banners = new();
-
+    [Inject] AuthenticationStateProvider AuthStateProvider { get; set; }
     int current = 0;
     System.Timers.Timer timer;
 
@@ -138,6 +142,17 @@
             .Take(12)
             .ToList();
 
+        // load wishlist state
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            var list = await WishlistSvc.GetWishlistAsync();
+
+            wishlist = list
+                .Select(x => x.ProductId)
+                .ToHashSet();
+        }
         banners = await Http.GetFromJsonAsync<List<HeroBannerDto>>
         ("api/banners");
 
@@ -179,10 +194,9 @@
             current = banners.Count - 1;
     }
 
-    async Task LoadProducts(string categoryId)
+    void LoadProducts(string categoryId)
     {
-        products = await Http.GetFromJsonAsync<List<ProductDto>>
-        ($"api/catalog/products/GetByCategory/{categoryId}");
+        Navigation.NavigateTo($"/products/{categoryId}");
     }
 
     void OpenLink(string link)
@@ -239,17 +253,22 @@
     // wishlist ui
     HashSet<string> wishlist = new();
 
-    void ToggleWishlist(ProductDto product)
+    async Task ToggleWishlist(ProductDto product)
     {
         if (wishlist.Contains(product.Id))
+        {
+            await WishlistSvc.RemoveAsync(product.Id);
             wishlist.Remove(product.Id);
+        }
         else
+        {
+            await WishlistSvc.AddAsync(product.Id);
             wishlist.Add(product.Id);
+        }
+        StateHasChanged();
     }
 
     bool IsInWishlist(ProductDto product)
-    {
-        return wishlist.Contains(product.Id);
-    }
+        => wishlist.Contains(product.Id);
 
 }

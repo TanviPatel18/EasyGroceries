@@ -104,6 +104,7 @@ namespace ECommerce.Application.Catalog.Services
                 StockQuantity = p.StockQuantity,
                 Published = p.Published,
                 ProductType = p.ProductType,
+                CreatedOn = p.CreatedOn,
                 ImageUrls = p.ImageUrls ?? new List<string>()
             }).ToList();
         }

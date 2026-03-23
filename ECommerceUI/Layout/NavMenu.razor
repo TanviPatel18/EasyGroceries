@@ -64,7 +64,7 @@
 </AuthorizeView>
 
         <span @onclick="GoCart">
-            🛒 Cart
+            <i class="fa-solid fa-bag-shopping"></i> Cart
         </span>
 
     </div>
@@ -121,7 +121,7 @@
 
     void OpenCategory(string id)
     {
-        Navigation.NavigateTo($"/category/{id}");
+        Navigation.NavigateTo($"/products/{id}");
     }
 
     void SearchProduct()
