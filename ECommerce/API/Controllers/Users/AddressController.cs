@@ -1,7 +1,5 @@
 ﻿using ECommerce.Application.Users.DTOs;
 using ECommerce.Application.Users.Interfaces;
-using ECommerce.Application.Users.DTOs;
-using ECommerce.Application.Users.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -20,10 +18,8 @@ namespace ECommerce.API.Controllers.Users
             _service = service;
         }
 
-        private string GetCustomerId()
-        {
-            return User.FindFirstValue(ClaimTypes.NameIdentifier);
-        }
+        private string GetCustomerId() =>
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         [HttpGet("my")]
         public async Task<IActionResult> MyAddresses()
@@ -37,6 +33,21 @@ namespace ECommerce.API.Controllers.Users
         {
             await _service.AddAddressAsync(GetCustomerId(), dto);
             return Ok();
+        }
+
+        // ✅ New edit endpoint
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateAddress(UpdateAddressDto dto)
+        {
+            try
+            {
+                await _service.UpdateAddressAsync(GetCustomerId(), dto);
+                return Ok();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]

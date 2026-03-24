@@ -1,8 +1,9 @@
 ﻿using ECommerce.Models.Users.Entities;
 namespace ECommerce.Application.Users.DTOs
 {
-    public class CreateAddressDto
+    public class UpdateAddressDto
     {
+        public string Id { get; set; }
         public string FullName { get; set; }
         public string PhoneNumber { get; set; }
         public string AddressLine1 { get; set; }
@@ -12,9 +13,7 @@ namespace ECommerce.Application.Users.DTOs
         public string State { get; set; }
         public string ZipCode { get; set; }
         public string Country { get; set; } = "India";
-        public AddressType AddressType { get; set; } = AddressType.Home;
+        public AddressType AddressType { get; set; }
         public bool IsDefault { get; set; }
     }
-
-    //public enum AddressType { Home, Work, Other }
 }

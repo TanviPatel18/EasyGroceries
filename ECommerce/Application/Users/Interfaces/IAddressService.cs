@@ -10,5 +10,6 @@ namespace ECommerce.Application.Users.Interfaces
         Task AddAddressAsync(string customerId, CreateAddressDto dto);
 
         Task DeleteAddressAsync(string addressId);
+        Task UpdateAddressAsync(string customerId, UpdateAddressDto dto);
     }
 }

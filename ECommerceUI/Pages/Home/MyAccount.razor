@@ -5,12 +5,14 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using System.Net.Http.Json
 @using ECommerceUI.Services.other
 @using ECommerceUI.Models.Account
 @using ECommerceUI.Models.Auth
 @using ECommerceUI.Services
 @inject AccountService AccountSvc
 @inject AuthService AuthSvc
+@inject AddressService AddressSvc
 @inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
 
@@ -31,7 +33,8 @@
     {
         <div class="acc-top-card">
             <div class="acc-avatar">
-                @(profile?.FirstName?.Substring(0, 1).ToUpper())@(profile?.LastName?.Substring(0, 1).ToUpper())
+                @((!string.IsNullOrEmpty(profile?.FirstName) ? profile.FirstName[0].ToString().ToUpper() : "U"))
+                @((!string.IsNullOrEmpty(profile?.LastName) ? profile.LastName[0].ToString().ToUpper() : ""))
             </div>
             <div>
                 <div class="acc-top-name">@profile?.FirstName @profile?.LastName</div>
@@ -52,19 +55,16 @@
                 </div>
                 <div class="acc-item-arrow">&#8250;</div>
             </div>
-            <div class="acc-menu-item" @onclick='() => activeTab = "address"'>
 
+            <div class="acc-menu-item" @onclick='() => activeTab = "address"'>
                 <div class="acc-item-icon acc-icon-blue">
                     <i class="fa-solid fa-location-dot"></i>
                 </div>
-
                 <div class="acc-item-body">
                     <div class="acc-item-title">Address Book</div>
                     <div class="acc-item-sub">Manage delivery addresses</div>
                 </div>
-
                 <div class="acc-item-arrow">&#8250;</div>
-
             </div>
 
             <div class="acc-menu-item" @onclick='() => activeTab = "password"'>
@@ -105,7 +105,8 @@
 
                 <div class="acc-top-card">
                     <div class="acc-avatar">
-                        @(profile?.FirstName?.Substring(0, 1).ToUpper())@(profile?.LastName?.Substring(0, 1).ToUpper())
+                        @((!string.IsNullOrEmpty(profile?.FirstName) ? profile.FirstName[0].ToString().ToUpper() : "U"))
+                        @((!string.IsNullOrEmpty(profile?.LastName) ? profile.LastName[0].ToString().ToUpper() : ""))
                     </div>
                     <div>
                         <div class="acc-top-name">@profile?.FirstName @profile?.LastName</div>
@@ -127,7 +128,9 @@
                         </div>
                         <div class="acc-item-arrow">&#8250;</div>
                     </div>
-                    <div class="acc-menu-item" @onclick='() => activeTab = "address"'>
+
+                    <div class="acc-menu-item @(activeTab == "address" ? "active" : "")"
+                         @onclick='() => activeTab = "address"'>
                         <div class="acc-item-icon acc-icon-blue">
                             <i class="fa-solid fa-location-dot"></i>
                         </div>
@@ -137,6 +140,7 @@
                         </div>
                         <div class="acc-item-arrow">&#8250;</div>
                     </div>
+
                     <div class="acc-menu-item @(activeTab == "password" ? "active" : "")"
                          @onclick='() => activeTab = "password"'>
                         <div class="acc-item-icon acc-icon-green">&#128274;</div>
@@ -167,11 +171,11 @@
                     </div>
 
                 </div>
-
             </div>
 
             <div class="acc-right">
 
+                @* ══════════════ PROFILE TAB ══════════════ *@
                 @if (activeTab == "profile")
                 {
                     <div class="acc-card">
@@ -187,125 +191,242 @@
                         <div class="acc-form-row">
                             <div class="acc-form-group">
                                 <label>First Name</label>
-                                <input @bind="editDto.FirstName"
-                                       placeholder="First name" />
+                                <input @bind="editDto.FirstName" placeholder="First name" />
                             </div>
                             <div class="acc-form-group">
                                 <label>Last Name</label>
-                                <input @bind="editDto.LastName"
-                                       placeholder="Last name" />
+                                <input @bind="editDto.LastName" placeholder="Last name" />
                             </div>
                         </div>
                         <div class="acc-form-group">
                             <label>Email</label>
-                            <input value="@profile?.Email"
-                                   disabled class="acc-disabled" />
+                            <input value="@profile?.Email" disabled class="acc-disabled" />
                         </div>
                         <div class="acc-form-group">
                             <label>Phone</label>
-                            <input @bind="editDto.Phone"
-                                   placeholder="Phone number" />
+                            <input @bind="editDto.Phone" placeholder="Phone number" />
                         </div>
-                        <button class="acc-save-btn"
-                                disabled="@isSaving"
+                        <button class="acc-save-btn" disabled="@isSaving"
                                 @onclick="SaveProfile">
                             @(isSaving ? "Saving..." : "Save Changes")
                         </button>
                     </div>
                 }
 
-
-
+                @* ══════════════ ADDRESS TAB ══════════════ *@
                 @if (activeTab == "address")
                 {
                     <div class="acc-card">
 
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div class="acc-card-title">Address Book</div>
-
-                            <button class="acc-save-btn"
-                                    @onclick="() => showAddAddress = !showAddAddress">
+                            <button class="acc-save-btn" @onclick="OpenAddForm">
                                 <i class="fa-solid fa-plus"></i> Add Address
                             </button>
                         </div>
 
+                        @if (!string.IsNullOrEmpty(addressSuccess))
+                        {
+                            <div class="acc-success">&#10003; @addressSuccess</div>
+                        }
+                        @if (!string.IsNullOrEmpty(addressError))
+                        {
+                            <div class="acc-error">&#10007; @addressError</div>
+                        }
+
+                        @* ── Add / Edit Form ── *@
                         @if (showAddAddress)
                         {
-                            <div style="margin-top:20px">
+                            <div style="margin-top:20px;padding:16px;
+                                border:1px solid #e0e0e0;border-radius:10px">
 
-                                <div class="acc-form-group">
-                                    <label>Full Name</label>
-                                    <input @bind="newAddress.FullName" />
+                                <div class="acc-card-title"
+                                     style="font-size:15px;margin-bottom:12px">
+                                    @(editingAddress != null ? "Edit Address" : "New Address")
+                                </div>
+
+                                <div class="acc-form-row">
+                                    <div class="acc-form-group">
+                                        <label>Full Name</label>
+                                        <input @bind="addressForm.FullName"
+                                               placeholder="John Doe" />
+                                    </div>
+                                    <div class="acc-form-group">
+                                        <label>Phone</label>
+                                        <input @bind="addressForm.PhoneNumber"
+                                               placeholder="9876543210" />
+                                    </div>
                                 </div>
 
                                 <div class="acc-form-group">
-                                    <label>Phone</label>
-                                    <input @bind="newAddress.PhoneNumber" />
+                                    <label>Address Line 1</label>
+                                    <input @bind="addressForm.AddressLine1"
+                                           placeholder="House No, Street Name" />
                                 </div>
 
                                 <div class="acc-form-group">
-                                    <label>Address</label>
-                                    <input @bind="newAddress.Address" />
+                                    <label>
+                                        Address Line 2
+                                        <span style="color:#aaa;font-size:12px">(optional)</span>
+                                    </label>
+                                    <input @bind="addressForm.AddressLine2"
+                                           placeholder="Apartment, Floor, etc." />
+                                </div>
+
+                                <div class="acc-form-row">
+                                    <div class="acc-form-group">
+                                        <label>
+                                            Landmark
+                                            <span style="color:#aaa;font-size:12px">(optional)</span>
+                                        </label>
+                                        <input @bind="addressForm.Landmark"
+                                               placeholder="Near XYZ Mall" />
+                                    </div>
+                                    <div class="acc-form-group">
+                                        <label>City</label>
+                                        <input @bind="addressForm.City"
+                                               placeholder="Surat" />
+                                    </div>
+                                </div>
+
+                                <div class="acc-form-row">
+                                    <div class="acc-form-group">
+                                        <label>State</label>
+                                        <input @bind="addressForm.State"
+                                               placeholder="Gujarat" />
+                                    </div>
+                                    <div class="acc-form-group">
+                                        <label>ZIP Code</label>
+                                        <input @bind="addressForm.ZipCode"
+                                               placeholder="395001" />
+                                    </div>
                                 </div>
 
                                 <div class="acc-form-group">
-                                    <label>City</label>
-                                    <input @bind="newAddress.City" />
+                                    <label>Address Type</label>
+                                    <select @bind="addressForm.AddressType"
+                                            style="width:100%;padding:10px;
+                                        border:1px solid #ddd;
+                                        border-radius:8px">
+                                        <option value="Home">🏠 Home</option>
+                                        <option value="Work">💼 Work</option>
+                                        <option value="Other">📍 Other</option>
+                                    </select>
                                 </div>
 
-                                <div class="acc-form-group">
-                                    <label>State</label>
-                                    <input @bind="newAddress.State" />
+                                <div style="display:flex;align-items:center;
+                                    gap:8px;margin-bottom:14px">
+                                    <input type="checkbox" id="isDefault"
+                                           @bind="addressForm.IsDefault" />
+                                    <label for="isDefault"
+                                           style="margin:0;font-size:14px">
+                                        Set as default address
+                                    </label>
                                 </div>
 
-                                <div class="acc-form-group">
-                                    <label>Zip Code</label>
-                                    <input @bind="newAddress.ZipCode" />
+                                <div style="display:flex;gap:10px">
+                                    <button class="acc-save-btn"
+                                            disabled="@isSaving"
+                                            @onclick="SaveAddress">
+                                        @if (isSaving)
+                                        {
+                                            <span>Saving...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>
+                                                @(editingAddress != null
+                                                    ? "Update Address"
+                                                    : "Save Address")
+                                            </span>
+                                        }
+                                    </button>
+                                    <button class="acc-cancel-btn"
+                                            @onclick="CloseAddressForm">
+                                        Cancel
+                                    </button>
                                 </div>
-
-                                <button class="acc-save-btn"
-                                        @onclick="SaveAddress">
-                                    Save Address
-                                </button>
 
                             </div>
                         }
 
+                        @* ── Address Cards ── *@
                         <div style="margin-top:25px">
-
                             @if (addresses == null || !addresses.Any())
                             {
-                                <p>No address saved.</p>
+                                <div style="text-align:center;color:#aaa;padding:30px 0">
+                                    <i class="fa-solid fa-location-dot"
+                                       style="font-size:32px;margin-bottom:10px"></i>
+                                    <p>No address saved yet.</p>
+                                </div>
                             }
                             else
                             {
                                 @foreach (var a in addresses)
                                 {
-                                    <div class="acc-card"
-                                         style="margin-bottom:15px">
+                                    <div class="acc-card @(a.IsDefault ? "default-card" : "")">
 
-                                        <b>@a.FullName</b> <br />
-                                        @a.PhoneNumber <br />
-                                        @a.Address, @a.City <br />
-                                        @a.State - @a.ZipCode
+                                        <!-- TOP ROW -->
+                                        <div class="acc-address-top">
 
-                                        <div style="margin-top:10px">
-                                            <button class="acc-delete-btn"
-                                                    @onclick="() => DeleteAddress(a.Id)">
-                                                <i class="fa-solid fa-trash"></i> Delete
-                                            </button>
+                                            <!-- LEFT TAGS -->
+                                            <div class="acc-address-tags">
+                                                <span class="tag-home">@a.AddressType</span>
+
+                                                @if (a.IsDefault)
+                                                {
+                                                    <span class="tag-default">Default</span>
+                                                }
+                                            </div>
+
+                                            <!-- RIGHT BUTTONS -->
+                                            <div class="acc-address-actions">
+                                                <button class="acc-save-btn"
+                                                        @onclick="() => OpenEditForm(a)">
+                                                    <i class="fa-solid fa-pencil"></i> Edit
+                                                </button>
+
+                                                <button class="acc-delete-btn"
+                                                        @onclick="() => DeleteAddress(a.Id)">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+
+                                        </div>
+
+                                        <!-- NAME + PHONE -->
+                                        <div class="acc-address-name">
+                                            <b>@a.FullName</b>
+                                            <span>@a.PhoneNumber</span>
+                                        </div>
+
+                                        <!-- ADDRESS -->
+                                        <div class="acc-address-text">
+                                            <div>@a.AddressLine1</div>
+
+                                            @if (!string.IsNullOrEmpty(a.AddressLine2))
+                                            {
+                                                <div>@a.AddressLine2</div>
+                                            }
+
+                                            @if (!string.IsNullOrEmpty(a.Landmark))
+                                            {
+                                                <div>Near: @a.Landmark</div>
+                                            }
+
+                                            <div>@a.City, @a.State — @a.ZipCode</div>
+                                            <div>@a.Country</div>
                                         </div>
 
                                     </div>
                                 }
                             }
-
                         </div>
 
                     </div>
                 }
 
-
+                @* ══════════════ PASSWORD TAB ══════════════ *@
                 @if (activeTab == "password")
                 {
                     <div class="acc-card">
@@ -324,8 +445,7 @@
                         </p>
                         @if (!otpSent)
                         {
-                            <button class="acc-save-btn"
-                                    disabled="@isSaving"
+                            <button class="acc-save-btn" disabled="@isSaving"
                                     @onclick="SendOtp">
                                 @(isSaving ? "Sending..." : "Send OTP to Email")
                             </button>
@@ -334,25 +454,20 @@
                         {
                             <div class="acc-form-group">
                                 <label>Enter OTP</label>
-                                <input @bind="otp"
-                                       placeholder="6-digit OTP"
-                                       maxlength="6" />
+                                <input @bind="otp" placeholder="6-digit OTP" maxlength="6" />
                             </div>
                             <div class="acc-form-group">
                                 <label>New Password</label>
-                                <input type="password"
-                                       @bind="newPassword"
+                                <input type="password" @bind="newPassword"
                                        placeholder="New password" />
                             </div>
                             <div class="acc-form-group">
                                 <label>Confirm Password</label>
-                                <input type="password"
-                                       @bind="confirmPassword"
+                                <input type="password" @bind="confirmPassword"
                                        placeholder="Confirm password" />
                             </div>
                             <div style="display:flex;gap:12px;">
-                                <button class="acc-save-btn"
-                                        disabled="@isSaving"
+                                <button class="acc-save-btn" disabled="@isSaving"
                                         @onclick="ChangePassword">
                                     @(isSaving ? "Changing..." : "Change Password")
                                 </button>
@@ -365,6 +480,7 @@
                     </div>
                 }
 
+                @* ══════════════ DELETE TAB ══════════════ *@
                 @if (activeTab == "delete")
                 {
                     <div class="acc-card">
@@ -384,8 +500,7 @@
                                 Are you sure you want to delete your account?
                             </div>
                         </div>
-                        <button class="acc-delete-btn"
-                                disabled="@isSaving"
+                        <button class="acc-delete-btn" disabled="@isSaving"
                                 @onclick="DeleteAccount">
                             @(isSaving ? "Deleting..." : "Delete My Account")
                         </button>
@@ -393,7 +508,6 @@
                 }
 
             </div>
-
         </div>
     }
 
@@ -401,15 +515,16 @@
 
 @code {
 
+    // ── Profile ──
     ProfileDto? profile;
     UpdateProfileDto editDto = new();
     bool isLoading = true;
     bool isSaving = false;
     string activeTab = "menu";
-
     string profileSuccess = string.Empty;
     string profileError = string.Empty;
 
+    // ── Password ──
     bool otpSent = false;
     string otp = string.Empty;
     string newPassword = string.Empty;
@@ -417,14 +532,20 @@
     string passSuccess = string.Empty;
     string passError = string.Empty;
 
+    // ── Delete ──
     string deleteError = string.Empty;
 
+    // ── Address ──
     List<CustomerAddressDto> addresses = new();
-
     bool showAddAddress = false;
+    UpdateAddressDto addressForm = new();
+    CustomerAddressDto? editingAddress = null;
+    string addressSuccess = string.Empty;
+    string addressError = string.Empty;
 
-    CreateAddressDto newAddress = new();
-
+    // ════════════════════════════════════
+    //  INIT
+    // ════════════════════════════════════
     protected override async Task OnInitializedAsync()
     {
         profile = await AccountSvc.GetProfileAsync();
@@ -436,11 +557,14 @@
             editDto.Phone = profile.Phone;
             editDto.Email = profile.Email;
         }
-        addresses = await Http.GetFromJsonAsync<List<CustomerAddressDto>>(
-    "api/address/my");
+
+        addresses = await AddressSvc.GetMyAddressesAsync();
         isLoading = false;
     }
 
+    // ════════════════════════════════════
+    //  PROFILE
+    // ════════════════════════════════════
     async Task SaveProfile()
     {
         profileSuccess = string.Empty;
@@ -453,6 +577,7 @@
         if (success)
         {
             profileSuccess = "Profile updated successfully!";
+            _ = HideProfileSuccess();
             profile = await AccountSvc.GetProfileAsync();
         }
         else
@@ -461,6 +586,135 @@
         }
     }
 
+    // ════════════════════════════════════
+    //  ADDRESS
+    // ════════════════════════════════════
+    void OpenAddForm()
+    {
+        editingAddress = null;
+        addressForm = new UpdateAddressDto();
+        addressSuccess = string.Empty;
+        addressError = string.Empty;
+        showAddAddress = true;
+    }
+
+    async Task HideAddressSuccess()
+    {
+        await Task.Delay(3000); // 3 seconds
+        addressSuccess = string.Empty;
+        StateHasChanged();
+    }
+
+
+    void OpenEditForm(CustomerAddressDto a)
+    {
+        editingAddress = a;
+        addressForm = new UpdateAddressDto
+        {
+            Id = a.Id,
+            FullName = a.FullName,
+            PhoneNumber = a.PhoneNumber,
+            AddressLine1 = a.AddressLine1,
+            AddressLine2 = a.AddressLine2,
+            Landmark = a.Landmark,
+            City = a.City,
+            State = a.State,
+            ZipCode = a.ZipCode,
+            Country = a.Country,
+            AddressType = a.AddressType,
+            IsDefault = a.IsDefault
+        };
+        addressSuccess = string.Empty;
+        addressError = string.Empty;
+        showAddAddress = true;
+    }
+
+    void CloseAddressForm()
+    {
+        showAddAddress = false;
+        editingAddress = null;
+        addressForm = new UpdateAddressDto();
+    }
+
+    async Task SaveAddress()
+    {
+        addressSuccess = string.Empty;
+        addressError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(addressForm.FullName) ||
+            string.IsNullOrWhiteSpace(addressForm.AddressLine1) ||
+            string.IsNullOrWhiteSpace(addressForm.City) ||
+            string.IsNullOrWhiteSpace(addressForm.ZipCode))
+        {
+            addressError = "Please fill in all required fields.";
+            return;
+        }
+
+        isSaving = true;
+
+        if (editingAddress != null)
+        {
+            var (success, error) = await AddressSvc.UpdateAddressAsync(addressForm);
+            if (success)
+            {
+                addressSuccess = "Address updated successfully!";
+                _ = HideAddressSuccess();
+                CloseAddressForm();
+                addresses = await AddressSvc.GetMyAddressesAsync();
+            }
+            else
+            {
+                addressError = error ?? "Failed to update address.";
+            }
+        }
+        else
+        {
+            var createDto = new CreateAddressDto
+            {
+                FullName = addressForm.FullName,
+                PhoneNumber = addressForm.PhoneNumber,
+                AddressLine1 = addressForm.AddressLine1,
+                AddressLine2 = addressForm.AddressLine2,
+                Landmark = addressForm.Landmark,
+                City = addressForm.City,
+                State = addressForm.State,
+                ZipCode = addressForm.ZipCode,
+                Country = string.IsNullOrWhiteSpace(addressForm.Country) ? "India" : addressForm.Country,
+                AddressType = addressForm.AddressType,
+                IsDefault = addressForm.IsDefault
+            };
+
+            var (success, error) = await AddressSvc.AddAddressAsync(createDto);
+            if (success)
+            {
+                addressSuccess = "Address added successfully!";
+                _ = HideAddressSuccess();
+                CloseAddressForm();
+                addressForm = new UpdateAddressDto();
+                editingAddress = null;
+                addresses = await AddressSvc.GetMyAddressesAsync();
+            }
+            else
+            {
+                addressError = error ?? "Failed to add address.";
+            }
+        }
+
+        isSaving = false;
+    }
+
+    async Task DeleteAddress(string id)
+    {
+        var (success, error) = await AddressSvc.DeleteAddressAsync(id);
+        if (success)
+            addresses = await AddressSvc.GetMyAddressesAsync();
+        else
+            addressError = error ?? "Failed to delete address.";
+    }
+
+    // ════════════════════════════════════
+    //  PASSWORD
+    // ════════════════════════════════════
     async Task SendOtp()
     {
         isSaving = true;
@@ -475,10 +729,8 @@
         var result = await AuthSvc.ForgotPasswordAsync(model);
         isSaving = false;
 
-        if (result == "ok")
-            otpSent = true;
-        else
-            passError = "Failed to send OTP. Please try again.";
+        if (result == "ok") otpSent = true;
+        else passError = "Failed to send OTP. Please try again.";
     }
 
     async Task ChangePassword()
@@ -491,13 +743,11 @@
             passError = "Please enter the OTP.";
             return;
         }
-
         if (newPassword != confirmPassword)
         {
             passError = "Passwords do not match.";
             return;
         }
-
         if (newPassword.Length < 6)
         {
             passError = "Password must be at least 6 characters.";
@@ -531,6 +781,9 @@
         }
     }
 
+    // ════════════════════════════════════
+    //  DELETE ACCOUNT
+    // ════════════════════════════════════
     async Task DeleteAccount()
     {
         var confirm = await JS.InvokeAsync<bool>(
@@ -547,8 +800,7 @@
             var request = new HttpRequestMessage(
                 HttpMethod.Delete,
                 $"api/users/customers/delete?email={profile?.Email}");
-            request.SetBrowserRequestCredentials(
-                BrowserRequestCredentials.Include);
+            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
 
             var response = await Http.SendAsync(request);
 
@@ -575,6 +827,9 @@
         isSaving = false;
     }
 
+    // ════════════════════════════════════
+    //  LOGOUT / BACK
+    // ════════════════════════════════════
     async Task Logout()
     {
         await Http.PostAsync("api/auth/logout", null);
@@ -587,35 +842,16 @@
         Navigation.NavigateTo("/", true);
     }
 
-
-
     async Task GoBack()
     {
         await JS.InvokeVoidAsync("history.back");
     }
 
-    async Task SaveAddress()
+    
+    async Task HideProfileSuccess()
     {
-        var response = await Http.PostAsJsonAsync(
-            "api/address/add",
-            newAddress);
-
-        if (response.IsSuccessStatusCode)
-        {
-            showAddAddress = false;
-            newAddress = new CreateAddressDto();
-
-            addresses = await Http.GetFromJsonAsync<List<CustomerAddressDto>>(
-                "api/address/my");
-        }
+        await Task.Delay(3000);
+        profileSuccess = string.Empty;
+        StateHasChanged();
     }
-    async Task DeleteAddress(string id)   
-    {
-        await Http.DeleteAsync($"api/address/{id}");
-
-        addresses = await Http.GetFromJsonAsync<List<CustomerAddressDto>>(
-            "api/address/my");
-    }
-
-
 }

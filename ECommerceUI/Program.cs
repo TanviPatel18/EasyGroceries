@@ -49,6 +49,7 @@ builder.Services.AddScoped<WishlistService>();
 // ✅ Add this line
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<AddressService>();
 
 
 
