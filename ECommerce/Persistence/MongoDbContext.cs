@@ -76,5 +76,9 @@ namespace ECommerce.Persistence
 
         public IMongoCollection<PasswordResetToken> PasswordResetTokens =>
             _db.GetCollection<PasswordResetToken>("PasswordResetTokens");
+
+
+        public IMongoCollection<CustomerAddress> CustomerAddresses =>
+    _db.GetCollection<CustomerAddress>("CustomerAddresses");
     }
 }

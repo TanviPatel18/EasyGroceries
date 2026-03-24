@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace ECommerce.Application.Catalog.Services
 {
-    public class ProductService:IProductService
+    public class ProductService : IProductService
     {
         private readonly IVendorRepository _vendorRepository;
         private readonly IProductRepository _repo;

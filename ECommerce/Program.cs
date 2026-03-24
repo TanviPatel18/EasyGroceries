@@ -12,6 +12,7 @@ using ECommerce.Application.Users.Services;
 using ECommerce.Infrastructure.Extensions;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
+
 using ECommerce.Models.Interfaces;
 using ECommerce.Application.Wishlist.Interfaces;
 using ECommerce.Application.Wishlist.Services;
@@ -56,6 +57,11 @@ builder.Services.AddScoped<ICategoryImageRepository, CategoryImageRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository,PasswordResetTokenRepository>();
 builder.Services.AddScoped
     <IWishlistRepository, WishlistRepository>();
+builder.Services.AddScoped<ICustomerAddressRepository, CustomerAddressRepository>();
+
+
+
+
 
 // -------------------- Services --------------------
 
@@ -76,6 +82,10 @@ builder.Services.AddScoped<ICategoryImageService, CategoryImageService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped
     <IWishlistService, WishlistService>();
+builder.Services.AddScoped<IAddressService, AddressService>();
+
+
+
 
 // -------------------- JWT Authentication --------------------
 

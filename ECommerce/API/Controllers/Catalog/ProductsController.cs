@@ -12,7 +12,7 @@ namespace ECommerce.API.Controllers.Catalog
 {
     [ApiController]
     [Route("api/catalog/products")]
-    public class ProductsController:ControllerBase
+    public class ProductsController : ControllerBase
     {
         private readonly IProductService _service;
         public ProductsController(IProductService productService)
@@ -42,7 +42,7 @@ namespace ECommerce.API.Controllers.Catalog
 
 
         [HttpPost("Create")]
-        public async Task<IActionResult> Create( CreateProductDto dto)
+        public async Task<IActionResult> Create(CreateProductDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -59,7 +59,7 @@ namespace ECommerce.API.Controllers.Catalog
             return Ok(result);
         }
 
-        
+
         [HttpPut("Update")]
         public async Task<IActionResult> Update(UpdateProductDto dto)
         {
@@ -95,7 +95,7 @@ namespace ECommerce.API.Controllers.Catalog
                 MetaKeywords = product.MetaKeywords,
                 MetaDescription = product.MetaDescription,
                 ImageUrls = product.ImageUrls,
-                ProductType=product.ProductType
+                ProductType = product.ProductType
             });
         }
 

@@ -1610,6 +1610,7 @@ body {
     background: #534AB7;
     border-radius: 12px;
     padding: 16px;
+    margin-bottom: 16px;
 }
 
 .acc-avatar {
@@ -1659,6 +1660,7 @@ body {
     border-radius: 10px;
     background: #fff;
     cursor: pointer;
+    margin-bottom: 12px;
 }
 
     .acc-menu-item:hover {
