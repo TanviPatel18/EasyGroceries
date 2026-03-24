@@ -24,29 +24,24 @@
         </div>
 
         <!-- RIGHT MENU -->
+        @* // ✅ AFTER *@
         <div class="nav-icons">
             <NavLink href="/wishlist" class="nav-wish-icon">
                 ❤️
-                @* @if (wishlistCount > 0)
-                {
-                    <span class="nav-wish-count">@wishlistCount</span>
-                } *@
             </NavLink>
             <NavLink href="/cart">
                 <i class="fa-solid fa-cart-shopping"></i> Cart
             </NavLink>
-
             <AuthorizeView>
-
-        <Authorized>
-            <span class="logout-btn" @onclick="Logout">Logout</span>
-        </Authorized>
-
-        <NotAuthorized>
-            <NavLink href="/login">Login</NavLink>
-        </NotAuthorized>
-
-    </AuthorizeView>
+                <Authorized>
+                    <NavLink href="/my-account">
+                        <i class="fa-solid fa-circle-user"></i> Account
+                    </NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink href="/login">Login</NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
 
     </header>
@@ -83,14 +78,6 @@
     {
         categories = await Http.GetFromJsonAsync<List<CategoryDto>>
         ("api/catalog/categories/GetAll");
-
-        // try
-        // {
-        //     var items = await Http
-        //         .GetFromJsonAsync<List<object>>("api/wishlist");
-        //     wishlistCount = items?.Count ?? 0;
-        // }
-        // catch { wishlistCount = 0; }
     }
 
     void SearchProduct()

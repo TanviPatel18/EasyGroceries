@@ -72,5 +72,35 @@ namespace ECommerce.API.Controllers.Users
             return Ok("Customer deleted successfully");
         }
 
+        // ✅ Add these 2 methods to existing CustomersController.cs
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            var customers = await _service.GetAllAsync();
+            var customer = customers.FirstOrDefault(x => x.Email == email);
+            if (customer == null) return NotFound();
+
+            return Ok(new
+            {
+                customer.FirstName,
+                customer.LastName,
+                customer.Email,
+                customer.Phone,
+                customer.RegistrationDate
+            });
+        }
+
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMe(
+            [FromBody] UpdateCustomerDto dto)
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            await _service.UpdateByEmailAsync(email, dto);
+            return Ok("Profile updated successfully");
+        }
+
     }
 }

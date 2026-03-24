@@ -48,4 +48,9 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
 builder.Services.AddScoped<WishlistService>();
 // ✅ Add this line
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<AccountService>();
+
+
+
+
 await builder.Build().RunAsync();

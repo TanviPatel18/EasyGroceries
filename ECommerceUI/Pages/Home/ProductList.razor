@@ -181,7 +181,7 @@
                                 </div>
                                 <div class="pl-free-del">Free Delivery</div>
                                 @* // ✅ AFTER — with onclick + Buy Now after adding *@
-                                <button class="pl-cart-btn @(IsInCart(product) ? "in-cart" : "")"
+                                <button class="pl-cart-btn-list @(IsInCart(product) ? "in-cart" : "")"
                                         disabled="@(product.StockQuantity <= 0)"
                                         @onclick="() => AddToCart(product)">
                                     @(product.StockQuantity <= 0 ? "Out of Stock"

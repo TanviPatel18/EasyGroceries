@@ -12,12 +12,12 @@
 
 <div class="cart-page">
 
-    <div class="cart-header">
-        <button class="cart-back-btn" @onclick="GoBack">
-            &#8592; Back
+    <div class="page-topbar">
+        <button class="page-topbar-back" @onclick="GoBack">
+            <i class="fa-solid fa-arrow-left"></i>
         </button>
-        <h2 class="cart-title">My Cart</h2>
-        <span class="cart-count">@cartItems.Count item(s)</span>
+        <span class="page-topbar-title">My Cart</span>
+        <span class="page-topbar-count">@cartItems.Count item(s)</span>
     </div>
 
     @if (isLoading)

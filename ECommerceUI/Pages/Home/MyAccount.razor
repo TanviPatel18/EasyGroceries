@@ -1,0 +1,472 @@
+﻿@page "/my-account"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject HttpClient Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using ECommerceUI.Services.other
+@using ECommerceUI.Models.Account
+@using ECommerceUI.Models.Auth
+@using ECommerceUI.Services
+@inject AccountService AccountSvc
+@inject AuthService AuthSvc
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Authorize]
+
+<div class="acc-page">
+
+    <div class="acc-header">
+        <button class="page-topbar-back" @onclick="GoBack">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h2 class="acc-title">My Account</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="acc-loading">Loading profile...</div>
+    }
+    else if (activeTab == "menu")
+    {
+        <div class="acc-top-card">
+            <div class="acc-avatar">
+                @(profile?.FirstName?.Substring(0, 1).ToUpper())@(profile?.LastName?.Substring(0, 1).ToUpper())
+            </div>
+            <div>
+                <div class="acc-top-name">@profile?.FirstName @profile?.LastName</div>
+                <div class="acc-top-email">@profile?.Email</div>
+                <div class="acc-top-joined">
+                    Member since @profile?.RegistrationDate.ToString("MMM yyyy")
+                </div>
+            </div>
+        </div>
+
+        <div class="acc-menu-list">
+
+            <div class="acc-menu-item" @onclick='() => activeTab = "profile"'>
+                <div class="acc-item-icon acc-icon-blue">&#128100;</div>
+                <div class="acc-item-body">
+                    <div class="acc-item-title">Personal Details</div>
+                    <div class="acc-item-sub">Name, phone number</div>
+                </div>
+                <div class="acc-item-arrow">&#8250;</div>
+            </div>
+
+            <div class="acc-menu-item" @onclick='() => activeTab = "password"'>
+                <div class="acc-item-icon acc-icon-green">&#128274;</div>
+                <div class="acc-item-body">
+                    <div class="acc-item-title">Password &amp; Security</div>
+                    <div class="acc-item-sub">Change your password</div>
+                </div>
+                <div class="acc-item-arrow">&#8250;</div>
+            </div>
+
+            <div class="acc-menu-item acc-item-danger"
+                 @onclick='() => activeTab = "delete"'>
+                <div class="acc-item-icon acc-icon-red">&#128465;</div>
+                <div class="acc-item-body">
+                    <div class="acc-item-title">Delete Account</div>
+                    <div class="acc-item-sub">Permanently remove account</div>
+                </div>
+                <div class="acc-item-arrow">&#8250;</div>
+            </div>
+
+            <div class="acc-menu-item acc-item-logout" @onclick="Logout">
+                <div class="acc-item-icon acc-icon-gray">&#128682;</div>
+                <div class="acc-item-body">
+                    <div class="acc-item-title">Logout</div>
+                    <div class="acc-item-sub">Sign out of your account</div>
+                </div>
+                <div class="acc-item-arrow">&#8250;</div>
+            </div>
+
+        </div>
+    }
+    else
+    {
+        <div class="acc-layout">
+
+            <div class="acc-left">
+
+                <div class="acc-top-card">
+                    <div class="acc-avatar">
+                        @(profile?.FirstName?.Substring(0, 1).ToUpper())@(profile?.LastName?.Substring(0, 1).ToUpper())
+                    </div>
+                    <div>
+                        <div class="acc-top-name">@profile?.FirstName @profile?.LastName</div>
+                        <div class="acc-top-email">@profile?.Email</div>
+                        <div class="acc-top-joined">
+                            Member since @profile?.RegistrationDate.ToString("MMM yyyy")
+                        </div>
+                    </div>
+                </div>
+
+                <div class="acc-menu-list">
+
+                    <div class="acc-menu-item @(activeTab == "profile" ? "active" : "")"
+                         @onclick='() => activeTab = "profile"'>
+                        <div class="acc-item-icon acc-icon-blue">&#128100;</div>
+                        <div class="acc-item-body">
+                            <div class="acc-item-title">Personal Details</div>
+                            <div class="acc-item-sub">Name, phone number</div>
+                        </div>
+                        <div class="acc-item-arrow">&#8250;</div>
+                    </div>
+
+                    <div class="acc-menu-item @(activeTab == "password" ? "active" : "")"
+                         @onclick='() => activeTab = "password"'>
+                        <div class="acc-item-icon acc-icon-green">&#128274;</div>
+                        <div class="acc-item-body">
+                            <div class="acc-item-title">Password &amp; Security</div>
+                            <div class="acc-item-sub">Change your password</div>
+                        </div>
+                        <div class="acc-item-arrow">&#8250;</div>
+                    </div>
+
+                    <div class="acc-menu-item @(activeTab == "delete" ? "active" : "") acc-item-danger"
+                         @onclick='() => activeTab = "delete"'>
+                        <div class="acc-item-icon acc-icon-red">&#128465;</div>
+                        <div class="acc-item-body">
+                            <div class="acc-item-title">Delete Account</div>
+                            <div class="acc-item-sub">Permanently remove account</div>
+                        </div>
+                        <div class="acc-item-arrow">&#8250;</div>
+                    </div>
+
+                    <div class="acc-menu-item acc-item-logout" @onclick="Logout">
+                        <div class="acc-item-icon acc-icon-gray">&#128682;</div>
+                        <div class="acc-item-body">
+                            <div class="acc-item-title">Logout</div>
+                            <div class="acc-item-sub">Sign out of your account</div>
+                        </div>
+                        <div class="acc-item-arrow">&#8250;</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="acc-right">
+
+                @if (activeTab == "profile")
+                {
+                    <div class="acc-card">
+                        <div class="acc-card-title">Personal Details</div>
+                        @if (!string.IsNullOrEmpty(profileSuccess))
+                        {
+                            <div class="acc-success">&#10003; @profileSuccess</div>
+                        }
+                        @if (!string.IsNullOrEmpty(profileError))
+                        {
+                            <div class="acc-error">&#10007; @profileError</div>
+                        }
+                        <div class="acc-form-row">
+                            <div class="acc-form-group">
+                                <label>First Name</label>
+                                <input @bind="editDto.FirstName"
+                                       placeholder="First name" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>Last Name</label>
+                                <input @bind="editDto.LastName"
+                                       placeholder="Last name" />
+                            </div>
+                        </div>
+                        <div class="acc-form-group">
+                            <label>Email</label>
+                            <input value="@profile?.Email"
+                                   disabled class="acc-disabled" />
+                        </div>
+                        <div class="acc-form-group">
+                            <label>Phone</label>
+                            <input @bind="editDto.Phone"
+                                   placeholder="Phone number" />
+                        </div>
+                        <button class="acc-save-btn"
+                                disabled="@isSaving"
+                                @onclick="SaveProfile">
+                            @(isSaving ? "Saving..." : "Save Changes")
+                        </button>
+                    </div>
+                }
+
+                @if (activeTab == "password")
+                {
+                    <div class="acc-card">
+                        <div class="acc-card-title">Password &amp; Security</div>
+                        @if (!string.IsNullOrEmpty(passSuccess))
+                        {
+                            <div class="acc-success">&#10003; @passSuccess</div>
+                        }
+                        @if (!string.IsNullOrEmpty(passError))
+                        {
+                            <div class="acc-error">&#10007; @passError</div>
+                        }
+                        <p class="acc-pass-info">
+                            To change your password we will send
+                            an OTP to your registered email address.
+                        </p>
+                        @if (!otpSent)
+                        {
+                            <button class="acc-save-btn"
+                                    disabled="@isSaving"
+                                    @onclick="SendOtp">
+                                @(isSaving ? "Sending..." : "Send OTP to Email")
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="acc-form-group">
+                                <label>Enter OTP</label>
+                                <input @bind="otp"
+                                       placeholder="6-digit OTP"
+                                       maxlength="6" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>New Password</label>
+                                <input type="password"
+                                       @bind="newPassword"
+                                       placeholder="New password" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>Confirm Password</label>
+                                <input type="password"
+                                       @bind="confirmPassword"
+                                       placeholder="Confirm password" />
+                            </div>
+                            <div style="display:flex;gap:12px;">
+                                <button class="acc-save-btn"
+                                        disabled="@isSaving"
+                                        @onclick="ChangePassword">
+                                    @(isSaving ? "Changing..." : "Change Password")
+                                </button>
+                                <button class="acc-cancel-btn"
+                                        @onclick="() => otpSent = false">
+                                    Cancel
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (activeTab == "delete")
+                {
+                    <div class="acc-card">
+                        <div class="acc-card-title">Delete Account</div>
+                        @if (!string.IsNullOrEmpty(deleteError))
+                        {
+                            <div class="acc-error">&#10007; @deleteError</div>
+                        }
+                        <p class="acc-pass-info">
+                            Once you delete your account all your data
+                            will be permanently removed.
+                            This action cannot be undone.
+                        </p>
+                        <div class="acc-delete-box">
+                            <div class="acc-delete-icon">&#9888;</div>
+                            <div class="acc-delete-text">
+                                Are you sure you want to delete your account?
+                            </div>
+                        </div>
+                        <button class="acc-delete-btn"
+                                disabled="@isSaving"
+                                @onclick="DeleteAccount">
+                            @(isSaving ? "Deleting..." : "Delete My Account")
+                        </button>
+                    </div>
+                }
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    ProfileDto? profile;
+    UpdateProfileDto editDto = new();
+    bool isLoading = true;
+    bool isSaving = false;
+    string activeTab = "menu";
+
+    string profileSuccess = string.Empty;
+    string profileError = string.Empty;
+
+    bool otpSent = false;
+    string otp = string.Empty;
+    string newPassword = string.Empty;
+    string confirmPassword = string.Empty;
+    string passSuccess = string.Empty;
+    string passError = string.Empty;
+
+    string deleteError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profile = await AccountSvc.GetProfileAsync();
+
+        if (profile != null)
+        {
+            editDto.FirstName = profile.FirstName;
+            editDto.LastName = profile.LastName;
+            editDto.Phone = profile.Phone;
+            editDto.Email = profile.Email;
+        }
+
+        isLoading = false;
+    }
+
+    async Task SaveProfile()
+    {
+        profileSuccess = string.Empty;
+        profileError = string.Empty;
+        isSaving = true;
+
+        var success = await AccountSvc.UpdateProfileAsync(editDto);
+        isSaving = false;
+
+        if (success)
+        {
+            profileSuccess = "Profile updated successfully!";
+            profile = await AccountSvc.GetProfileAsync();
+        }
+        else
+        {
+            profileError = "Failed to update. Please try again.";
+        }
+    }
+
+    async Task SendOtp()
+    {
+        isSaving = true;
+        passError = string.Empty;
+
+        var model = new ForgotPasswordModel
+        {
+            Email = profile?.Email ?? string.Empty,
+            Phone = profile?.Phone ?? string.Empty
+        };
+
+        var result = await AuthSvc.ForgotPasswordAsync(model);
+        isSaving = false;
+
+        if (result == "ok")
+            otpSent = true;
+        else
+            passError = "Failed to send OTP. Please try again.";
+    }
+
+    async Task ChangePassword()
+    {
+        passSuccess = string.Empty;
+        passError = string.Empty;
+
+        if (string.IsNullOrEmpty(otp))
+        {
+            passError = "Please enter the OTP.";
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            passError = "Passwords do not match.";
+            return;
+        }
+
+        if (newPassword.Length < 6)
+        {
+            passError = "Password must be at least 6 characters.";
+            return;
+        }
+
+        isSaving = true;
+
+        var model = new ResetPasswordModel
+        {
+            Email = profile?.Email ?? string.Empty,
+            Otp = otp,
+            NewPassword = newPassword,
+            ConfirmPassword = confirmPassword
+        };
+
+        var result = await AuthSvc.ResetPasswordAsync(model);
+        isSaving = false;
+
+        if (result == "ok")
+        {
+            passSuccess = "Password changed successfully!";
+            otpSent = false;
+            otp = string.Empty;
+            newPassword = string.Empty;
+            confirmPassword = string.Empty;
+        }
+        else
+        {
+            passError = "Invalid or expired OTP. Please try again.";
+        }
+    }
+
+    async Task DeleteAccount()
+    {
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Are you sure? This will permanently delete your account.");
+
+        if (!confirm) return;
+
+        isSaving = true;
+        deleteError = string.Empty;
+
+        try
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"api/users/customers/delete?email={profile?.Email}");
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", "role");
+                await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+
+                if (AuthStateProvider is CustomAuthStateProvider p)
+                    p.MarkUserAsLoggedOut();
+
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                deleteError = "Failed to delete account. Please try again.";
+            }
+        }
+        catch
+        {
+            deleteError = "Something went wrong. Please try again.";
+        }
+
+        isSaving = false;
+    }
+
+    async Task Logout()
+    {
+        await Http.PostAsync("api/auth/logout", null);
+        await JS.InvokeVoidAsync("localStorage.removeItem", "role");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+
+        if (AuthStateProvider is CustomAuthStateProvider provider)
+            provider.MarkUserAsLoggedOut();
+
+        Navigation.NavigateTo("/", true);
+    }
+
+    async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+}

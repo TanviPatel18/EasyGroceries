@@ -12,12 +12,12 @@
 
 <div class="wl-page">
 
-    <div class="wl-header">
-        <button class="wl-back-btn" @onclick="GoBack">
-            &#8592; Back
+    <div class="page-topbar">
+        <button class="page-topbar-back" @onclick="GoBack">
+            <i class="fa-solid fa-arrow-left"></i>
         </button>
-        <h2 class="wl-title">My Wishlist</h2>
-        <span class="wl-count">@wishlistItems.Count item(s)</span>
+        <span class="page-topbar-title">My Wishlist</span>
+        <span class="page-topbar-count">@wishlistItems.Count item(s)</span>
     </div>
 
     @if (isLoading)
