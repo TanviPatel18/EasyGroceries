@@ -50,6 +50,7 @@ builder.Services.AddScoped<WishlistService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<AddressService>();
+builder.Services.AddScoped<RecentProductService>();
 
 
 

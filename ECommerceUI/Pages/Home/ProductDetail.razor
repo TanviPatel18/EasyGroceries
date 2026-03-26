@@ -1,0 +1,738 @@
+﻿@page "/product/{Id}"
+@using ECommerceUI.Models.Catalog
+@using ECommerceUI.Services.other
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using System.Net.Http.Json
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject RecentProductService RecentSvc
+@inject ProductService ProductSvc
+@inject CartService CartSvc
+@inject WishlistService WishlistSvc
+
+<div class="pd-page">
+
+    @if (_loading)
+    {
+        <div class="pd-loading">
+            <div class="pd-spinner"></div>
+            <p>Loading product...</p>
+        </div>
+    }
+    else if (_product == null)
+    {
+        <div class="pd-not-found">
+            <i class="fa-solid fa-box-open"></i>
+            <p>Product not found.</p>
+            <button @onclick='() => Navigation.NavigateTo("/")'>Go Home</button>
+        </div>
+    }
+    else
+    {
+        @* ── TOP BAR ── *@
+        <div class="pd-topbar">
+            <button class="pd-back" @onclick="GoBack">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <span class="pd-topbar-title">Product Details</span>
+            <button class="pd-wishlist-top @(_isWishlisted ? "pd-wish-active" : "")"
+                    @onclick="ToggleWishlist">
+                <i class="fa-@(_isWishlisted ? "solid" : "regular") fa-heart"></i>
+            </button>
+        </div>
+
+        <div class="pd-body">
+
+            @* ══════════════════════════════════
+               LEFT — Image Gallery
+            ══════════════════════════════════ *@
+            <div class="pd-gallery">
+
+                <!-- Thumbnails -->
+                @if (_product.ImageUrls != null && _product.ImageUrls.Count > 1)
+                {
+                    <div class="pd-thumbs">
+                        @for (int i = 0; i < _product.ImageUrls.Count; i++)
+                        {
+                            <img class="pd-thumb @(i == _activeImage ? "active" : "")"
+                                 src="@($"https://localhost:5001/{_product.ImageUrls[i]}")"
+                                 @onclick="() => _activeImage = i" />
+                        }
+                    </div>
+                }
+
+                <!-- Main Image -->
+                <div class="pd-main-img-wrap">
+                    <img class="pd-main-img"
+                         src="@(_product.ImageUrls != null && _product.ImageUrls.Any()
+                                 ? $"https://localhost:5001/{_product.ImageUrls[_activeImage]}"
+                                 : "/images/no-image.png")" />
+                </div>
+
+            </div>
+
+            @* ══════════════════════════════════
+               MIDDLE — Product Info
+            ══════════════════════════════════ *@
+            <div class="pd-info">
+
+                @if (!string.IsNullOrEmpty(_product.Brand))
+                {
+                    <div class="pd-brand">
+                        <a href="#">Visit the @_product.Brand Store</a>
+                    </div>
+                }
+
+                <h1 class="pd-name">@_product.ProductName</h1>
+
+                @* Rating *@
+                <div class="pd-rating-row">
+                    <div class="pd-stars">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            var fi = i;
+                            <i class="fa-@(fi <= Math.Round(_product.AverageRating)
+                                                                                                       ? "solid" : "regular") fa-star"></i>
+                    }
+                </div>
+                <span class="pd-rating-val">
+                    @_product.AverageRating.ToString("0.0")
+                </span>
+                <span class="pd-rating-count">
+                    (@_product.ReviewCount reviews)
+                </span>
+            </div>
+
+            <div class="pd-divider"></div>
+
+            @* Price *@
+            <div class="pd-price-block">
+                @if (_discountPct > 0)
+                {
+                    <span class="pd-discount-tag">-@_discountPct%</span>
+                }
+                <span class="pd-price">₹@_product.Price.ToString("N0")</span>
+                @if (_product.OldPrice > 0)
+                {
+                    <span class="pd-old-price">
+                        M.R.P: <s>₹@_product.OldPrice.ToString("N0")</s>
+                    </span>
+                }
+            </div>
+            <div class="pd-tax-note">Inclusive of all taxes</div>
+
+            <div class="pd-divider"></div>
+
+            @* Stock status *@
+            @if (_product.StockQuantity > 0)
+            {
+                <div class="pd-instock">
+                    <i class="fa-solid fa-circle-check"></i> In Stock
+                    @if (_product.StockQuantity <= 5)
+                    {
+                        <span class="pd-low-stock">
+                            — Only @_product.StockQuantity left!
+                        </span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pd-outstock">
+                    <i class="fa-solid fa-circle-xmark"></i> Out of Stock
+                </div>
+            }
+
+            @* Quantity selector *@
+            <div class="pd-qty-row">
+                <span class="pd-qty-label">Quantity:</span>
+                <div class="pd-qty-ctrl">
+                    <button @onclick="DecQty" disabled="@(_qty <= 1)">−</button>
+                    <span>@_qty</span>
+                    <button @onclick="IncQty"
+                            disabled="@(_qty >= _product.StockQuantity)">
+                        +
+                    </button>
+                </div>
+            </div>
+
+            @* Tags *@
+            @if (_product.Tags != null && _product.Tags.Any())
+            {
+                <div class="pd-tags">
+                    @foreach (var tag in _product.Tags)
+                    {
+                        <span class="pd-tag">@tag</span>
+                    }
+                </div>
+            }
+
+            <div class="pd-divider"></div>
+
+            @* Description *@
+            <div class="pd-desc-title">About this item</div>
+            <div class="pd-desc">@_product.Description</div>
+
+            @* Specs *@
+            @if (!string.IsNullOrEmpty(_product.Brand) ||
+                                 !string.IsNullOrEmpty(_product.Weight) ||
+                                 !string.IsNullOrEmpty(_product.Dimensions) ||
+                                 !string.IsNullOrEmpty(_product.Sku))
+            {
+                <div class="pd-divider"></div>
+                <div class="pd-specs-title">Product Information</div>
+                <div class="pd-specs">
+                    @if (!string.IsNullOrEmpty(_product.Brand))
+                    {
+                        <div class="pd-spec-row">
+                            <span class="pd-spec-key">Brand</span>
+                            <span class="pd-spec-val">@_product.Brand</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(_product.Weight))
+                    {
+                        <div class="pd-spec-row">
+                            <span class="pd-spec-key">Item Weight</span>
+                            <span class="pd-spec-val">@_product.Weight</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(_product.Dimensions))
+                    {
+                        <div class="pd-spec-row">
+                            <span class="pd-spec-key">Dimensions</span>
+                            <span class="pd-spec-val">@_product.Dimensions</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(_product.Sku))
+                    {
+                        <div class="pd-spec-row">
+                            <span class="pd-spec-key">SKU</span>
+                            <span class="pd-spec-val">@_product.Sku</span>
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+
+        @* ══════════════════════════════════
+               RIGHT — Buy Box
+            ══════════════════════════════════ *@
+        <div class="pd-buybox">
+
+            <div class="pd-buybox-price">
+                ₹@_product.Price.ToString("N0")
+            </div>
+
+            @if (_product.OldPrice > 0)
+            {
+                <div class="pd-buybox-mrp">
+                    M.R.P: <s>₹@_product.OldPrice.ToString("N0")</s>
+                </div>
+            }
+
+            <div class="pd-buybox-free">
+                <i class="fa-solid fa-truck-fast"></i>
+                FREE Delivery on orders above ₹499
+            </div>
+
+            @if (_product.StockQuantity > 0)
+            {
+                <div class="pd-buybox-stock">In stock</div>
+            }
+            else
+            {
+                <div class="pd-buybox-nostock">Currently unavailable</div>
+            }
+
+            <div class="pd-buybox-qty">
+                <label>Quantity:</label>
+                <div class="pd-qty-ctrl">
+                    <button @onclick="DecQty" disabled="@(_qty <= 1)">−</button>
+                    <span>@_qty</span>
+                    <button @onclick="IncQty"
+                            disabled="@(_qty >= _product.StockQuantity)">
+                        +
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_cartMsg))
+            {
+                <div class="pd-msg @(_cartSuccess ? "pd-msg-ok" : "pd-msg-err")">
+                    @_cartMsg
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(_wishMsg))
+            {
+                <div class="pd-msg pd-msg-ok">@_wishMsg</div>
+            }
+
+            <button class="pd-btn-cart"
+                    disabled="@(_product.StockQuantity == 0 || _addingCart)"
+                    @onclick="AddToCart">
+                <i class="fa-solid fa-cart-plus"></i>
+                @(_addingCart ? "Adding..." : "Add to Cart")
+            </button>
+
+            <button class="pd-btn-buy"
+                    disabled="@(_product.StockQuantity == 0)"
+                    @onclick="BuyNow">
+                Buy Now
+            </button>
+
+            <button class="pd-btn-wish @(_isWishlisted ? "pd-wish-active" : "")"
+                    @onclick="ToggleWishlist">
+                <i class="fa-@(_isWishlisted ? "solid" : "regular") fa-heart"></i>
+                @(_isWishlisted ? "Wishlisted" : "Add to Wishlist")
+            </button>
+
+            <div class="pd-buybox-divider"></div>
+
+            <div class="pd-secure">
+                <i class="fa-solid fa-shield-halved"></i>
+                Secure transaction
+            </div>
+
+        </div>
+
+    </div>
+
+    @if (_recentProducts != null && _recentProducts.Any())
+    {
+        <div class="recent-section">
+            <h3>Recently Viewed</h3>
+
+            <div class="recent-grid">
+                @foreach (var p in _recentProducts.Take(12))
+                {
+                    <div class="recent-card"
+                         @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
+
+                        <img src="@GetImage(p.ImageUrls)" />
+
+                        <div class="info">
+                            <p class="name">@p.ProductName</p>
+                            <p class="price">₹@p.Price.ToString("N0")</p>
+                        </div>
+
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_categoryProducts != null && _categoryProducts.Any())
+    {
+        <div class="recent-section">
+            <h3>Top Rated in this Category</h3>
+
+            <div class="recent-grid">
+                @foreach (var p in _categoryProducts.Take(12))
+                {
+                    <div class="recent-card"
+                         @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
+
+                        <img src="@GetImage(p.ImageUrls)" />
+
+                        <div class="info">
+                            <p class="name">@p.ProductName</p>
+                            <p class="price">₹@p.Price.ToString("N0")</p>
+                        </div>
+
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+
+    @* ══════════════════════════════════
+           REVIEWS SECTION
+        ══════════════════════════════════ *@
+    <div class="pd-reviews-section">
+
+        <div class="pd-reviews-title">Customer Reviews</div>
+
+        @* Rating summary *@
+        <div class="pd-reviews-summary">
+            <div class="pd-reviews-avg">
+                <span class="pd-avg-num">
+                    @_product.AverageRating.ToString("0.0")
+                </span>
+                <div class="pd-avg-stars">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        var fi = i;
+                        <i class="fa-@(fi <= Math.Round(_product.AverageRating)
+                                                                                                   ? "solid" : "regular") fa-star"></i>
+                }
+            </div>
+            <span class="pd-avg-label">
+                out of 5 (@_product.ReviewCount reviews)
+            </span>
+        </div>
+    </div>
+
+
+
+
+    @* Review List *@
+    @if (_reviews == null)
+    {
+        <p style="color:#aaa">Loading reviews...</p>
+    }
+    else if (!_reviews.Any())
+    {
+        <div class="pd-no-reviews">
+            <i class="fa-regular fa-comment"></i>
+            <p>No reviews yet. Be the first to review!</p>
+        </div>
+    }
+    else
+    {
+        <div class="pd-review-list">
+            @foreach (var r in _reviews)
+            {
+                <div class="pd-review-card">
+                    <div class="pd-review-top">
+                        <div class="pd-reviewer-avatar">
+                            @r.CustomerName.Substring(0, 1).ToUpper()
+                        </div>
+                        <div>
+                            <div class="pd-reviewer-name">@r.CustomerName</div>
+                            <div class="pd-review-stars">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    var fi = i;
+                                    <i class="fa-@(fi <= r.Rating
+                                                                                                                                               ? "solid" : "regular") fa-star"></i>
+                            }
+                        </div>
+                    </div>
+                    <div class="pd-review-date">
+                        @r.CreatedAt.ToString("dd MMM yyyy")
+                    </div>
+                </div>
+                <div class="pd-review-title">@r.Title</div>
+                <div class="pd-review-comment">@r.Comment</div>
+            </div>
+            }
+        </div>
+        }
+
+
+</div>
+    }
+@if (_recentProducts != null && _recentProducts.Any())
+{
+    <div class="recent-section">
+        <h3>Recently Viewed</h3>
+
+        <div class="recent-grid">
+            @foreach (var p in _recentProducts.Take(12))
+            {
+                <div class="recent-card"
+                     @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
+
+                    <img src="@GetImage(p.ImageUrls)" />
+
+                    <div class="info">
+                        <p class="name">@p.ProductName</p>
+                        <p class="price">₹@p.Price.ToString("N0")</p>
+                    </div>
+
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (_relatedProducts.Any())
+{
+    <div class="pd-related">
+        <h3>Related Products</h3>
+
+        <div class="pd-related-grid">
+            @foreach (var p in _relatedProducts)
+            {
+                <div class="pd-related-card"
+                     @onclick="() => GoToProduct(p.Id)">
+
+                    <img src="@GetImage(p.ImageUrls)" />
+                    <p>@p.ProductName</p>
+                    <span>₹@p.Price.ToString("N0")</span>
+
+                </div>
+            }
+        </div>
+    </div>
+}
+
+}
+
+
+</div>
+
+@code {
+
+    [Parameter] public string Id { get; set; } = "";
+    List<ProductVm> _recentProducts = new();
+    List<ProductVm> _categoryProducts = new();
+    ProductDetailDto? _product;
+    List<ProductReviewDto>? _reviews;
+
+    bool _loading = true;
+    int _activeImage = 0;
+    int _qty = 1;
+    int _discountPct = 0;
+
+    bool _isWishlisted = false;
+    bool _addingCart = false;
+    bool _cartSuccess = false;
+    string _cartMsg = "";
+    string _wishMsg = "";
+
+    // ════════════════════════════════════
+    //  INIT
+    // ════════════════════════════════════
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+
+        await LoadProduct();
+        await LoadWishlistStatus();
+        await LoadRelatedProducts();
+        await LoadCategoryProducts();
+
+        if (_product != null)
+        {
+            await RecentSvc.Add(new ProductVm
+            {
+                Id = _product.Id,
+                ProductName = _product.ProductName,
+                Price = _product.Price,
+                ImageUrls = _product.ImageUrls
+            });
+        }
+
+        await LoadRecentProducts();
+
+        _activeImage = 0;
+        _qty = 1;
+
+        _loading = false;
+    }
+
+    async Task LoadProduct()
+    {
+        try
+        {
+            _product = await ProductSvc.GetById(Id);
+
+            if (_product != null)
+            {
+                await LoadRelatedProducts();
+                await LoadCategoryProducts();
+                LoadRecentProducts();
+            }
+        }
+        catch
+        {
+            _product = null;
+        }
+    }
+
+    async Task LoadCategoryProducts()
+    {
+        try
+        {
+            var all = await ProductSvc.GetAllProducts();
+
+            _categoryProducts = all
+                .Where(p => p.CategoryId == _product!.CategoryId && p.Id != _product.Id)
+                .OrderByDescending(p => p.Rating) // ⭐ BEST RATED
+                .Take(20)
+                .ToList();
+        }
+        catch
+        {
+            _categoryProducts = new();
+        }
+    }
+    async Task LoadWishlistStatus()
+    {
+        _isWishlisted = await WishlistSvc.IsInWishlistAsync(Id);
+    }
+    async Task LoadRecentProducts()
+    {
+        try
+        {
+            var recent = await RecentSvc.Get();
+
+            _recentProducts = recent
+                .Where(p => p.Id != _product!.Id)
+                .Take(10)
+                .ToList();
+        }
+        catch
+        {
+            _recentProducts = new();
+        }
+    }
+
+    void GoToProduct(string id)
+    {
+        Navigation.NavigateTo($"/product/{id}");
+    }
+
+    // async Task LoadReviews()
+    // {
+    //     _reviews = await ProductSvc.GetReviews(Id);
+    // }
+
+    // ════════════════════════════════════
+    //              QUANTITY
+    // ════════════════════════════════════
+    void IncQty()
+    {
+        if (_product != null && _qty < _product.StockQuantity)
+            _qty++;
+    }
+
+    void DecQty()
+    {
+        if (_qty > 1) _qty--;
+    }
+
+    // ════════════════════════════════════
+    //  ADD TO CART  →  POST api/cart/add
+    // ════════════════════════════════════
+    async Task AddToCart()
+    {
+        if (_product == null) return;
+
+        _addingCart = true;
+
+        var success = await CartSvc.AddAsync(_product.Id, _qty);
+
+        _cartSuccess = success;
+        _cartMsg = success
+            ? "✓ Added to cart!"
+            : "Failed to add.";
+
+        _addingCart = false;
+
+        await Task.Delay(3000);
+        _cartMsg = "";
+    }
+
+    // ════════════════════════════════════
+    //  BUY NOW  →  go to checkout
+    // ════════════════════════════════════
+    async Task BuyNow()
+    {
+        await AddToCart();
+        Navigation.NavigateTo("/checkout");
+    }
+
+    // ════════════════════════════════════
+    //  WISHLIST  →  POST/DELETE api/wishlist
+    // ════════════════════════════════════
+    async Task ToggleWishlist()
+    {
+        if (_product == null) return;
+
+        if (_isWishlisted)
+        {
+            await WishlistSvc.RemoveAsync(_product.Id);
+            _wishMsg = "Removed from wishlist.";
+        }
+        else
+        {
+            await WishlistSvc.AddAsync(_product.Id);
+            _wishMsg = "✓ Added to wishlist!";
+        }
+
+        _isWishlisted = !_isWishlisted;
+
+        await Task.Delay(2000);
+        _wishMsg = "";
+    }
+
+    async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+
+    // helper DTO for wishlist check response
+    class WishlistCheckDto
+    {
+        public bool Exists { get; set; }
+    }
+
+
+    // adding some releted product
+
+    string GetImage(List<string>? images)
+    {
+        return images != null && images.Any()
+            ? $"https://localhost:5001/{images.First()}"
+            : "/images/no-image.png";
+    }
+
+
+    List<ProductVm> _relatedProducts = new();
+    async Task LoadRelatedProducts()
+    {
+        if (_product == null) return;
+
+        try
+        {
+            var all = await ProductSvc.GetAllProducts();
+
+            _relatedProducts = all
+                .Where(p => p.CategoryId == _product.CategoryId && p.Id != _product.Id)
+                .Take(6)
+                .ToList();
+        }
+        catch
+        {
+            _relatedProducts = new();
+        }
+    }
+
+
+    // for recently viewed
+
+    async Task SaveRecentProduct()
+    {
+        if (_product == null) return;
+
+        var json = await JS.InvokeAsync<string>("localStorage.getItem", "recentProducts");
+
+        List<string> items;
+
+        if (string.IsNullOrEmpty(json))
+        {
+            items = new List<string>();
+        }
+        else
+        {
+            items = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+
+        // remove if already exists
+        items.Remove(_product.Id);
+
+        // add to top
+        items.Insert(0, _product.Id);
+
+        // limit to 10
+        items = items.Take(10).ToList();
+
+        var updatedJson = System.Text.Json.JsonSerializer.Serialize(items);
+
+        await JS.InvokeVoidAsync("localStorage.setItem", "recentProducts", updatedJson);
+    }
+}

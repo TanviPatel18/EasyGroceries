@@ -45,6 +45,19 @@ public class ProductService
     public async Task Delete(string id) =>
         await _http.DeleteAsync($"api/catalog/products/{id}");
 
+    public async Task<ProductDetailDto?> GetById(string id)
+    {
+        return await _http.GetFromJsonAsync<ProductDetailDto>(
+            $"api/catalog/products/{id}");
+    }
+
+
+    public async Task<List<ProductReviewDto>> GetReviews(string productId)
+    {
+        return await _http.GetFromJsonAsync<List<ProductReviewDto>>(
+            $"api/products/{productId}/reviews");
+    }
+
     public async Task<List<CategoryVm>> GetCategories() =>
         await _http.GetFromJsonAsync<List<CategoryVm>>("api/catalog/categories/GetAll");
 }

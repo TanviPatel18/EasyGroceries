@@ -77,7 +77,7 @@
 
             @foreach (var product in products.Where(p => p.Published))
             {
-                <div class="product-card">
+                <div class="product-card" @onclick="() => GoToProduct(product.Id)">
 
                     <div class="product-img-wrap">
                         <img src="@GetProductImage(product)" alt="@product.ProductName" />
@@ -92,12 +92,14 @@
                         <div class="action-row">
 
                             <button class="wishlist-btn @(IsInWishlist(product) ? "active" : "")"
-                                    @onclick="() => ToggleWishlist(product)">
+                                    @onclick="() => ToggleWishlist(product)"
+                                    @onclick:stopPropagation="true">
                                 <i class="@(IsInWishlist(product) ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                             </button>
 
                             <button class="add-btn @(IsInCart(product) ? "in-cart" : "")"
-                                    @onclick="() => AddToCart(product)">
+                                    @onclick="() => AddToCart(product)"
+                                    @onclick:stopPropagation="true">
                                 @(IsInCart(product) ? "Buy Now" : "Add to Cart")
                             </button>
 
@@ -291,7 +293,7 @@
     bool IsInWishlist(ProductDto product)
         => wishlist.Contains(product.Id);
 
-     // add to cart ui
+    // add to cart ui
 
     HashSet<string> cart = new();
 
@@ -309,6 +311,11 @@
             cart.Add(product.Id);
             StateHasChanged();
         }
+    }
+
+    void GoToProduct(string id)
+    {
+        Navigation.NavigateTo($"/product/{id}");
     }
 
     bool IsInCart(ProductDto product)

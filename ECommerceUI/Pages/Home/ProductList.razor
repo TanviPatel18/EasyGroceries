@@ -127,7 +127,7 @@
                     }
                     @foreach (var product in filteredProducts)
                     {
-                        <div class="pl-card">
+                        <div class="pl-card" @onclick="() => GoToProduct(product.Id)">
 
                             @if (newest.Contains(product.Id))
                             {
@@ -148,7 +148,8 @@
                                 }
 
                                 <button class="pl-wish @(IsInWishlist(product) ? "active" : "")"
-                                        @onclick="() => ToggleWishlist(product)">
+                                        @onclick="() => ToggleWishlist(product)"
+                                        @onclick:stopPropagation="true">
                                     @(IsInWishlist(product) ? "♥" : "♡")
                                 </button>
 
@@ -184,7 +185,8 @@
                                 @* // ✅ AFTER — with onclick + Buy Now after adding *@
                                 <button class="pl-cart-btn-list @(IsInCart(product) ? "in-cart" : "")"
                                         disabled="@(product.StockQuantity <= 0)"
-                                        @onclick="() => AddToCart(product)">
+                                        @onclick="() => AddToCart(product)"
+                                        @onclick:stopPropagation="true">
                                     @(product.StockQuantity <= 0 ? "Out of Stock"
                                         : IsInCart(product) ? "Buy Now" : "Add to Cart")
                                 </button>
@@ -230,20 +232,36 @@
 
     HashSet<string> wishlist = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
 
-        // get category name
+        await LoadCategory();
+        await LoadProducts();
+        await LoadWishlist();
+
+        ApplyFilters();
+
+        isLoading = false;
+    }
+
+    async Task LoadCategory()
+    {
         try
         {
             var cat = await Http.GetFromJsonAsync<CategoryDto>(
                 $"api/catalog/categories/{CategoryId}");
+
             categoryName = cat?.Name ?? "Products";
         }
-        catch { categoryName = "Products"; }
+        catch
+        {
+            categoryName = "Products";
+        }
+    }
 
-        // get products
+    async Task LoadProducts()
+    {
         try
         {
             var response = await Http.PostAsJsonAsync(
@@ -255,22 +273,32 @@
                 allProducts = await response.Content
                     .ReadFromJsonAsync<List<ProductDto>>() ?? new();
             }
+            else
+            {
+                allProducts = new();
+            }
         }
-        catch { allProducts = new(); }
+        catch
+        {
+            allProducts = new();
+        }
+    }
 
-        // ── ADD HERE — load wishlist state ──
+    async Task LoadWishlist()
+{
+    try
+    {
         var list = await WishlistSvc.GetWishlistAsync();
 
         wishlist = list
             .Select(x => x.ProductId)
             .ToHashSet();
-
-        // ✅ AFTER
-        ApplyFilters();
-        isLoading = false;
-        StateHasChanged(); // ← add this line
-    
     }
+    catch
+    {
+        wishlist = new();
+    }
+}
 
     void ApplyFilters()
     {
@@ -368,6 +396,11 @@
             cart.Add(product.Id);
             StateHasChanged();
         }
+    }
+
+    void GoToProduct(string id)
+    {
+        Navigation.NavigateTo($"/product/{id}");
     }
 
     bool IsInCart(ProductDto product)
