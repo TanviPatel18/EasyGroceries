@@ -1,6 +1,5 @@
 ﻿using ECommerce.Application.Sales.DTOs;
 using ECommerce.Application.Sales.Interfaces;
-using ECommerce.Models.Sales.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +7,7 @@ namespace ECommerce.API.Controllers.Sales
 {
     [ApiController]
     [Route("api/shipments")]
-    //[Authorize(Roles = "Admin")]
+    [Authorize]
     public class ShipmentController : ControllerBase
     {
         private readonly IShipmentService _service;
@@ -19,6 +18,7 @@ namespace ECommerce.API.Controllers.Sales
         }
 
         [HttpPost("create")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(string orderId, string shippingMethod)
         {
             await _service.CreateShipmentAsync(orderId, shippingMethod);
@@ -26,38 +26,47 @@ namespace ECommerce.API.Controllers.Sales
         }
 
         [HttpPut("{id}/ship")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Ship(string id)
         {
             await _service.MarkAsShippedAsync(id);
-            return Ok("Marked as shipped");
+            return Ok();
         }
 
         [HttpPut("{id}/deliver")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Deliver(string id)
         {
             await _service.MarkAsDeliveredAsync(id);
-            return Ok("Marked as delivered");
+            return Ok();
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAll()
         {
-            var data = await _service.GetAllAsync();
+            return Ok(await _service.GetAllAsync());
+        }
+
+        [HttpGet("by-id/{id}")]
+        public async Task<IActionResult> GetById(string id)
+        {
+            var data = await _service.GetByIdAsync(id);
+            if (data == null) return NotFound();
             return Ok(data);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(string id)
+        [HttpGet("order/{orderId}")]
+        public async Task<IActionResult> GetByOrderId(string orderId)
         {
-            var shipment = await _service.GetByIdAsync(id);
-            return Ok(shipment);
+            return Ok(await _service.GetByOrderIdAsync(orderId));
         }
 
         [HttpPost("search")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Search([FromBody] ShipmentSearchDto dto)
         {
-            var result = await _service.SearchAsync(dto);
-            return Ok(result);
+            return Ok(await _service.SearchAsync(dto));
         }
     }
 }

@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @using ECommerceUI.Services
+@inject CartService CartSvc
 @using ECommerceUI.Models.wishlist
 @using ECommerceUI.Services.other
 @inject WishlistService WishlistSvc
@@ -45,7 +46,7 @@
         <div class="wl-grid">
             @foreach (var item in wishlistItems)
             {
-                <div class="wl-card">
+                <div class="wl-card" @onclick="() => GoToProduct(item.ProductId)">
 
                     <button class="wl-remove"
                             @onclick="() => RemoveItem(item)"
@@ -94,8 +95,13 @@
                         </div>
 
                         <button class="wl-cart-btn"
-                                disabled="@(item.StockQuantity <= 0)">
-                            @(item.StockQuantity <= 0 ? "Out of Stock" : "Add to Cart")
+                                disabled="@(item.StockQuantity <= 0)"
+                                @onclick="() => AddToCart(item)"
+                                @onclick:stopPropagation="true">
+
+                            @(item.StockQuantity <= 0
+                                ? "Out of Stock"
+                                : (IsInCart(item) ? "Buy Now" : "Add to Cart"))
                         </button>
 
                     </div>
@@ -115,6 +121,9 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadWishlist();
+        var cartItems = await CartSvc.GetCartAsync();
+    cart = cartItems.Select(x => x.ProductId).ToHashSet();
+
     }
 
     async Task LoadWishlist()
@@ -180,5 +189,33 @@
     async Task GoBack()
     {
         await JS.InvokeVoidAsync("history.back");
+    }
+
+    HashSet<string> cart = new();
+
+    bool IsInCart(WishlistItemDto item)
+        => cart.Contains(item.ProductId);
+
+    async Task AddToCart(WishlistItemDto item)
+    {
+        // 👉 If already in cart → go to cart
+        if (cart.Contains(item.ProductId))
+        {
+            Navigation.NavigateTo("/cart");
+            return;
+        }
+
+        var success = await CartSvc.AddAsync(item.ProductId, 1);
+
+        if (success)
+        {
+            cart.Add(item.ProductId);
+            StateHasChanged();
+        }
+    }
+
+    void GoToProduct(string id)
+    {
+        Navigation.NavigateTo($"/product/{id}");
     }
 }

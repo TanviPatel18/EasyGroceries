@@ -10,9 +10,7 @@ namespace ECommerce.Application.Sales.Services
         private readonly IShipmentRepository _shipmentRepo;
         private readonly IOrderRepository _orderRepo;
 
-        public ShipmentService(
-            IShipmentRepository shipmentRepo,
-            IOrderRepository orderRepo)
+        public ShipmentService(IShipmentRepository shipmentRepo, IOrderRepository orderRepo)
         {
             _shipmentRepo = shipmentRepo;
             _orderRepo = orderRepo;
@@ -34,7 +32,7 @@ namespace ECommerce.Application.Sales.Services
 
             await _shipmentRepo.CreateAsync(shipment);
 
-            order.ShippingStatus = "Processing";
+            order.ShippingStatus = "Pending";
             await _orderRepo.UpdateAsync(order);
         }
 
@@ -50,8 +48,11 @@ namespace ECommerce.Application.Sales.Services
             await _shipmentRepo.UpdateAsync(shipment);
 
             var order = await _orderRepo.GetByIdAsync(shipment.OrderId);
-            order.ShippingStatus = "Shipped";
-            await _orderRepo.UpdateAsync(order);
+            if (order != null)
+            {
+                order.ShippingStatus = "Shipped";
+                await _orderRepo.UpdateAsync(order);
+            }
         }
 
         public async Task MarkAsDeliveredAsync(string shipmentId)
@@ -66,31 +67,30 @@ namespace ECommerce.Application.Sales.Services
             await _shipmentRepo.UpdateAsync(shipment);
 
             var order = await _orderRepo.GetByIdAsync(shipment.OrderId);
-            order.ShippingStatus = "Delivered";
-            await _orderRepo.UpdateAsync(order);
+            if (order != null)
+            {
+                order.ShippingStatus = "Delivered";
+                await _orderRepo.UpdateAsync(order);
+            }
         }
+        public async Task<Shipment?> GetSingleByOrderIdAsync(string orderId)
+        {
+            var shipments = await _shipmentRepo.GetByOrderIdAsync(orderId);
+            return shipments.FirstOrDefault();
+        }
+        public async Task<List<Shipment>> GetAllAsync()
+            => await _shipmentRepo.GetAllAsync();
+
+        public async Task<Shipment?> GetByIdAsync(string id)
+            => await _shipmentRepo.GetByIdAsync(id);
 
         public async Task<List<Shipment>> GetByOrderIdAsync(string orderId)
             => await _shipmentRepo.GetByOrderIdAsync(orderId);
 
-        private string GenerateTrackingNumber()
-        {
-            return "TRK" + DateTime.UtcNow.Ticks.ToString().Substring(10);
-        }
-
-        public async Task<List<Shipment>> GetAllAsync()
-        {
-            return await _shipmentRepo.GetAllAsync();
-        }
-
-        public async Task<Shipment> GetByIdAsync(string id)
-        {
-            return await _shipmentRepo.GetByIdAsync(id);
-        }
-
         public async Task<List<Shipment>> SearchAsync(ShipmentSearchDto dto)
-        {
-            return await _shipmentRepo.SearchAsync(dto);
-        }
+            => await _shipmentRepo.SearchAsync(dto);
+
+        private string GenerateTrackingNumber()
+            => "TRK" + DateTime.UtcNow.Ticks.ToString().Substring(10);
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace ECommerceUI.Models.Cart
 {
-    public class CartItemDto
+    public class CartItemDetailDto
     {
 
         public string ProductId { get; set; }

@@ -16,23 +16,25 @@ namespace ECommerce.Application.Sales.Services
         private readonly ICartRepository _cartRepo;
         private readonly ICartItemRepository _cartItemRepo;
         private readonly IProductRepository _productRepo;
-
+        private readonly IShipmentService _shipmentService;
         public OrderService(
             IOrderRepository orderRepo,
             IOrderItemRepository orderItemRepo,
             ICartRepository cartRepo,
             ICartItemRepository cartItemRepo,
-            IProductRepository productRepo)
+            IProductRepository productRepo,
+            IShipmentService shipmentService)
         {
             _orderRepo = orderRepo;
             _orderItemRepo = orderItemRepo;
             _cartRepo = cartRepo;
             _cartItemRepo = cartItemRepo;
             _productRepo = productRepo;
+            _shipmentService = shipmentService;
         }
 
         // ✅ PLACE ORDER FROM CART WITH SHIPPING ADDRESS
-        public async Task PlaceOrderFromCartAsync(string customerId, OrderAddressDto addressDto)
+        public async Task<string> PlaceOrderFromCartAsync(string customerId, OrderAddressDto addressDto)
         {
             var cart = await _cartRepo.GetByCustomerIdAsync(customerId);
             if (cart == null)
@@ -54,14 +56,11 @@ namespace ECommerce.Application.Sales.Services
                 if (product.StockQuantity < item.Quantity)
                     throw new Exception($"Insufficient stock for {product.ProductName}");
 
-                // Calculate total
                 total += item.Quantity * product.Price;
 
-                // Reduce stock
                 product.StockQuantity -= item.Quantity;
                 await _productRepo.UpdateAsync(product);
 
-                // Prepare order items
                 orderItems.Add(new OrderItem
                 {
                     ProductId = item.ProductId,
@@ -71,46 +70,41 @@ namespace ECommerce.Application.Sales.Services
                 });
             }
 
-            // ✅ Create address object (used for both Shipping & Billing)
             var address = new OrderAddress
             {
                 FullName = addressDto.FullName,
                 PhoneNumber = addressDto.PhoneNumber,
                 Address = addressDto.Address,
                 City = addressDto.City,
+                State = addressDto.State,
                 ZipCode = addressDto.ZipCode,
                 Country = "India"
             };
 
-            // ✅ Create Order
             var order = new Order
             {
                 CustomerId = customerId,
                 OrderTotal = total,
                 Currency = "INR",
                 OrderStatus = "Placed",
-                PaymentStatus = "Pending",
+                PaymentStatus = addressDto.PaymentMethod == "COD" ? "Pending" : "Paid",
                 ShippingStatus = "Pending",
+                PaymentMethod = addressDto.PaymentMethod,
                 OrderDate = DateTime.UtcNow,
-
                 ShippingAddress = address,
-                BillingAddress = address   // 🔥 IMPORTANT FIX
+                BillingAddress = address
             };
 
-            // Save Order
             await _orderRepo.CreateAsync(order);
+            await _shipmentService.CreateShipmentAsync(order.Id, "Standard");
 
-            // Assign OrderId to order items
             foreach (var item in orderItems)
-            {
                 item.OrderId = order.Id;
-            }
 
-            // Save Order Items
             await _orderItemRepo.AddItemsAsync(orderItems);
-
-            // Clear Cart
             await _cartItemRepo.ClearCartAsync(cart.Id);
+
+            return order.Id; // <- now correctly matches Task<string>
         }
         // ✅ GET MY ORDERS
         public async Task<List<Order>> GetMyOrdersAsync(string customerId)
@@ -170,5 +164,7 @@ namespace ECommerce.Application.Sales.Services
         {
             return await _orderItemRepo.GetByOrderIdAsync(orderId);
         }
+
+
     }
 }

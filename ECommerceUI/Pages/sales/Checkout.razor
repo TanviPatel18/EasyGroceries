@@ -1,0 +1,818 @@
+@page "/checkout"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Authorization
+@using ECommerceUI.Services
+@using ECommerceUI.Services.other
+@using ECommerceUI.Models.Cart
+@using ECommerceUI.Models.Account
+@using ECommerceUI.Models.Orders
+@inject CartService CartSvc
+@inject AddressService AddressSvc
+@inject OrderService OrderSvc
+@attribute [Authorize]
+
+<div class="co-page">
+
+    <div class="page-topbar">
+        <button class="page-topbar-back" @onclick="HandleBack">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <span class="page-topbar-title">@TopbarTitle</span>
+        @if (currentStep < 4)
+        {
+            <span class="page-topbar-count">@cartItems.Count item(s)</span>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="cart-loading">Loading...</div>
+    }
+    else
+    {
+        @* ── Stepper ── *@
+        @if (currentStep < 4)
+        {
+            <div class="co-stepper">
+                @for (int s = 1; s <= 4; s++)
+                {
+                    var sn = s;
+                    <div class="co-step">
+                        <div class="co-step-circle @StepClass(sn)">
+                            @if (sn < currentStep)
+                            {
+                                <i class="fa-solid fa-check"></i>
+                            }
+                            else
+                            {
+                                <span>@sn</span>
+                            }
+                        </div>
+                        <div class="co-step-label @(currentStep == sn ? "active" : "")">
+                            @StepLabel(sn)
+                        </div>
+                    </div>
+                    @if (sn < 4)
+                    {
+                        <div class="co-step-line @(currentStep > sn ? "done" : "")"></div>
+                    }
+                }
+            </div>
+        }
+
+        @* ════════════ STEP 1 — ADDRESS ════════════ *@
+        @if (currentStep == 1)
+        {
+            <div class="co-card">
+                <div class="co-card-title">Choose delivery address</div>
+
+                @if (!string.IsNullOrEmpty(addrError))
+                {
+                    <div class="co-error">
+                        <i class="fa-solid fa-circle-exclamation"></i> @addrError
+                    </div>
+                }
+
+                @if (addresses.Any())
+                {
+                    @foreach (var a in addresses)
+                    {
+                        <div class="co-addr-card @(selectedAddressId == a.Id ? "sel" : "")"
+                             @onclick="() => SelectAddress(a)">
+                            <div class="co-radio @(selectedAddressId == a.Id ? "on" : "")"></div>
+                            <div class="co-addr-body">
+                                <div class="co-addr-tags">
+                                    <span class="co-tag co-tag-type">@a.AddressType</span>
+                                    @if (a.IsDefault)
+                                    {
+                                        <span class="co-tag co-tag-default">Default</span>
+                                    }
+                                </div>
+                                <div class="co-addr-name">
+                                    <b>@a.FullName</b>
+                                    <span class="co-addr-phone">@a.PhoneNumber</span>
+                                </div>
+                                <div class="co-addr-text">
+                                    @a.AddressLine1
+                                    @if (!string.IsNullOrEmpty(a.AddressLine2))
+                                    {<span>, @a.AddressLine2</span>}
+                                    @if (!string.IsNullOrEmpty(a.Landmark))
+                                    {<span>, Near @a.Landmark</span>}
+                                    <br />
+                                    @a.City, @a.State &mdash; @a.ZipCode
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <button class="co-add-addr-btn" @onclick="ToggleNewAddrForm">
+                    <i class="fa-solid @(showNewAddrForm ? "fa-xmark" : "fa-plus")"></i>
+                    @(showNewAddrForm ? "Cancel" : "Add new address")
+                </button>
+
+                @if (showNewAddrForm)
+                {
+                    <div class="co-new-addr-form">
+                        <div class="co-form-row">
+                            <div class="acc-form-group">
+                                <label>Full name *</label>
+                                <input @bind="newAddr.FullName" placeholder="John Doe" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>Phone *</label>
+                                <input @bind="newAddr.PhoneNumber" placeholder="9876543210" />
+                            </div>
+                        </div>
+                        <div class="acc-form-group">
+                            <label>Address *</label>
+                            <input @bind="newAddr.Address"
+                                   placeholder="House No, Street, Area" />
+                        </div>
+                        <div class="co-form-row">
+                            <div class="acc-form-group">
+                                <label>City *</label>
+                                <input @bind="newAddr.City" placeholder="Surat" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>State *</label>
+                                <input @bind="newAddr.State" placeholder="Gujarat" />
+                            </div>
+                        </div>
+                        <div class="acc-form-group">
+                            <label>ZIP code *</label>
+                            <input @bind="newAddr.ZipCode" placeholder="395001" />
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <button class="cart-checkout-btn" @onclick="GoToReview">
+                Continue to review
+            </button>
+        }
+
+        @* ════════════ STEP 2 — REVIEW ════════════ *@
+        @if (currentStep == 2)
+        {
+            <div class="co-card">
+                <div class="co-confirm-row">
+                    <div class="co-confirm-icon">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div class="co-confirm-body">
+                        <div class="co-confirm-label">Delivering to</div>
+                        <div class="co-confirm-value">
+                            <b>@confirmedAddr.FullName</b> &nbsp;
+                            <span style="color:#666;font-weight:400">
+                                @confirmedAddr.PhoneNumber
+                            </span><br />
+                            @confirmedAddr.Address, @confirmedAddr.City,
+                            @confirmedAddr.State &mdash; @confirmedAddr.ZipCode
+                        </div>
+                    </div>
+                    <button class="co-change-btn" @onclick="() => currentStep = 1">
+                        Change
+                    </button>
+                </div>
+            </div>
+
+            <div class="co-card">
+                <div class="co-card-title">
+                    Order items (@cartItems.Count)
+                </div>
+                @foreach (var item in cartItems)
+                {
+                    <div class="co-item-row">
+                        <div class="co-item-img">
+                            @if (item.ImageUrls.Any())
+                            {
+                                <img src="@($"https://localhost:5001/{item.ImageUrls.First()}")"
+                                     alt="@item.ProductName" />
+                            }
+                            else
+                            {
+                                <img src="/images/no-image.png" alt="no image" />
+                            }
+                        </div>
+                        <div class="co-item-info">
+                            <div class="co-item-name">@item.ProductName</div>
+                            <div class="co-item-meta">
+                                Qty: @item.Quantity &nbsp;&middot;&nbsp;
+                                <span style="color:#388e3c;font-weight:600">
+                                    &#8377;@((item.Price * item.Quantity).ToString("N0"))
+                                </span>
+                                @if (item.OldPrice > item.Price)
+                                {
+                                    <span class="co-item-old">
+                                        &#8377;@((item.OldPrice * item.Quantity).ToString("N0"))
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="co-price-box">
+                    <div class="co-price-row">
+                        <span>Price (@cartItems.Count items)</span>
+                        <span>&#8377;@TotalMRP.ToString("N0")</span>
+                    </div>
+                    @if (HasDiscount)
+                    {
+                        <div class="co-price-row co-discount">
+                            <span>Discount</span>
+                            <span>- &#8377;@TotalDiscount.ToString("N0")</span>
+                        </div>
+                    }
+                    <div class="co-price-row">
+                        <span>Delivery</span>
+                        <span class="co-free">FREE</span>
+                    </div>
+                    <div class="co-price-divider"></div>
+                    <div class="co-price-total">
+                        <span>Total amount</span>
+                        <span>&#8377;@TotalPrice.ToString("N0")</span>
+                    </div>
+                    @if (HasDiscount)
+                    {
+                        <div style="margin-top:10px;text-align:center">
+                            <span class="co-savings-pill">
+                                You save &#8377;@TotalDiscount.ToString("N0") on this order
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <button class="cart-checkout-btn" @onclick="() => currentStep = 3">
+                Continue to payment
+            </button>
+            <button class="acc-cancel-btn"
+                    style="margin-top:10px;width:100%"
+                    @onclick="() => currentStep = 1">
+                &#8592; Back
+            </button>
+        }
+
+        @* ════════════ STEP 3 — PAYMENT ════════════ *@
+        @if (currentStep == 3)
+        {
+            <div class="co-mini-confirm">
+                <span>
+                    <i class="fa-solid fa-location-dot" style="color:#2874f0"></i>
+                    @confirmedAddr.FullName &mdash; @confirmedAddr.City
+                </span>
+                <span class="co-mini-total">&#8377;@TotalPrice.ToString("N0")</span>
+            </div>
+
+            <div class="co-card">
+                <div class="co-card-title">Choose payment method</div>
+
+                @if (!string.IsNullOrEmpty(payError))
+                {
+                    <div class="co-error">
+                        <i class="fa-solid fa-circle-exclamation"></i> @payError
+                    </div>
+                }
+
+                @* ── UPI ── *@
+                <div class="co-pay-method @(selectedPayment == "UPI" ? "sel" : "")"
+                     @onclick='() => SelectPayment("UPI")'>
+                    <div class="co-radio @(selectedPayment == "UPI" ? "on" : "")"></div>
+                    <div class="co-pay-icon co-pay-upi">&#9654;</div>
+                    <div class="co-pay-body">
+                        <div class="co-pay-name">UPI</div>
+                        <div class="co-pay-sub">GPay, PhonePe, Paytm &amp; more</div>
+                    </div>
+                    <span class="co-pay-badge">Recommended</span>
+                </div>
+
+                @if (selectedPayment == "UPI")
+                {
+                    <div class="co-pay-extra">
+                        <div class="co-upi-apps">
+                            @foreach (var app in new[] { "GPay", "PhonePe", "Paytm" })
+                            {
+                                var a = app;
+                                <button class="co-upi-app @(selectedUpiApp == a ? "sel" : "")"
+                                        @onclick="() => { selectedUpiApp = a; upiId = string.Empty; }">
+                                    <span class="co-upi-icon">
+                                        @(a == "GPay" ? "G" : a == "PhonePe" ? "P" : "₿")
+                                    </span>
+                                    @a
+                                </button>
+                            }
+                        </div>
+                        <div class="co-upi-or">— or enter UPI ID —</div>
+                        <div class="acc-form-group" style="margin-bottom:0">
+                            <input @bind="upiId"
+                                   @onfocus='() => selectedUpiApp = string.Empty'
+                                   placeholder="yourname@upi" />
+                        </div>
+                    </div>
+                }
+
+                @* ── Card ── *@
+                <div class="co-pay-method @(selectedPayment == "Card" ? "sel" : "")"
+                     @onclick='() => SelectPayment("Card")'>
+                    <div class="co-radio @(selectedPayment == "Card" ? "on" : "")"></div>
+                    <div class="co-pay-icon co-pay-card">&#9646;</div>
+                    <div class="co-pay-body">
+                        <div class="co-pay-name">Credit / Debit card</div>
+                        <div class="co-pay-sub">Visa, Mastercard, RuPay</div>
+                    </div>
+                </div>
+
+                @if (selectedPayment == "Card")
+                {
+                    <div class="co-pay-extra">
+                        <div class="acc-form-group">
+                            <label>Card number</label>
+                            <input @bind="cardNumber"
+                                   placeholder="1234 5678 9012 3456"
+                                   maxlength="19" />
+                        </div>
+                        <div class="co-form-row">
+                            <div class="acc-form-group">
+                                <label>Expiry (MM/YY)</label>
+                                <input @bind="cardExpiry"
+                                       placeholder="MM / YY"
+                                       maxlength="7" />
+                            </div>
+                            <div class="acc-form-group">
+                                <label>CVV</label>
+                                <input type="password"
+                                       @bind="cardCvv"
+                                       placeholder="•••"
+                                       maxlength="4" />
+                            </div>
+                        </div>
+                        <div class="acc-form-group" style="margin-bottom:0">
+                            <label>Name on card</label>
+                            <input @bind="cardName" placeholder="Ravi Sharma" />
+                        </div>
+                    </div>
+                }
+
+                @* ── COD ── *@
+                <div class="co-pay-method @(selectedPayment == "COD" ? "sel" : "")"
+                     @onclick='() => SelectPayment("COD")'>
+                    <div class="co-radio @(selectedPayment == "COD" ? "on" : "")"></div>
+                    <div class="co-pay-icon co-pay-cod">&#8377;</div>
+                    <div class="co-pay-body">
+                        <div class="co-pay-name">Cash on delivery</div>
+                        <div class="co-pay-sub">Pay when your order arrives</div>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(orderError))
+            {
+                <div class="co-error">
+                    <i class="fa-solid fa-circle-exclamation"></i> @orderError
+                </div>
+            }
+
+            <button class="cart-checkout-btn"
+                    disabled="@isPlacing"
+                    @onclick="PlaceOrder">
+                @(isPlacing
+                    ? "Placing order..."
+                    : $"Place order — ₹{TotalPrice:N0}")
+            </button>
+            <div class="co-secure">
+                <i class="fa-solid fa-lock"></i> Safe &amp; Secure Payments
+            </div>
+            <button class="acc-cancel-btn"
+                    style="margin-top:10px;width:100%"
+                    @onclick="() => currentStep = 2">
+                &#8592; Back to review
+            </button>
+        }
+
+        @* ════════════ STEP 4 — DONE ════════════ *@
+        @if (currentStep == 4)
+        {
+            <div class="co-success">
+                <div class="co-success-icon">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h2 class="co-success-title">Order placed!</h2>
+                <p class="co-success-sub">
+                    Your order is confirmed.<br />
+                    We'll notify you when it ships.
+                </p>
+                @if (!string.IsNullOrEmpty(placedOrderId))
+                {
+                    <div class="co-order-num">
+                        Order #@placedOrderId
+                    </div>
+                }
+                <button class="cart-checkout-btn"
+                        style="max-width:260px;margin:0 auto"
+                        @onclick='() => Navigation.NavigateTo("/my-orders")'>
+                    View my orders
+                </button>
+                <button class="acc-cancel-btn"
+                        style="max-width:260px;margin:8px auto"
+                        @onclick='() => Navigation.NavigateTo("/")'>
+                    Continue shopping
+                </button>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .co-page { max-width:640px; margin:0 auto; padding:0 0 80px; }
+
+    .co-stepper { display:flex; align-items:center; padding:0 4px; margin-bottom:20px; }
+    .co-step { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .co-step-circle {
+        width:28px; height:28px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-size:12px; font-weight:600;
+        border:1.5px solid #ccc; color:#999; background:#fff; transition:all .2s;
+    }
+    .co-step-circle.active { background:#2874f0; color:#fff; border-color:#2874f0; }
+    .co-step-circle.done   { background:#e8f5e9; color:#388e3c; border-color:#388e3c; font-size:11px; }
+    .co-step-label { font-size:10px; color:#999; white-space:nowrap; }
+    .co-step-label.active  { color:#2874f0; font-weight:600; }
+    .co-step-line { flex:1; height:1px; background:#e0e0e0; margin-bottom:16px; transition:background .2s; }
+    .co-step-line.done { background:#388e3c; }
+
+    .co-card { background:#fff; border:1px solid #e8e8e8; border-radius:12px; padding:18px; margin-bottom:14px; }
+    .co-card-title { font-size:15px; font-weight:700; color:#212121; margin-bottom:16px; }
+
+    .co-addr-card {
+        display:flex; gap:12px; padding:13px;
+        border:1.5px solid #e0e0e0; border-radius:10px;
+        cursor:pointer; margin-bottom:10px; transition:all .15s;
+    }
+    .co-addr-card:hover { border-color:#2874f0; }
+    .co-addr-card.sel   { border-color:#2874f0; background:#f0f5ff; }
+
+    .co-radio {
+        width:18px; height:18px; border-radius:50%;
+        border:2px solid #bbb; flex-shrink:0; margin-top:2px;
+        position:relative; transition:border-color .15s;
+    }
+    .co-radio.on { border-color:#2874f0; }
+    .co-radio.on::after {
+        content:''; position:absolute; top:50%; left:50%;
+        transform:translate(-50%,-50%);
+        width:9px; height:9px; border-radius:50%; background:#2874f0;
+    }
+
+    .co-addr-body { flex:1; }
+    .co-addr-tags { display:flex; gap:5px; margin-bottom:4px; }
+    .co-tag { font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px; }
+    .co-tag-type    { background:#e3f0ff; color:#185fa5; }
+    .co-tag-default { background:#e8f5e9; color:#27500a; }
+    .co-addr-name   { font-size:13px; font-weight:600; color:#212121; margin-bottom:3px; }
+    .co-addr-phone  { font-size:12px; color:#666; font-weight:400; margin-left:6px; }
+    .co-addr-text   { font-size:12px; color:#555; line-height:1.6; }
+
+    .co-add-addr-btn {
+        width:100%; padding:10px;
+        border:1.5px dashed #2874f0; border-radius:8px;
+        background:none; color:#2874f0; font-size:13px; font-weight:600;
+        cursor:pointer; display:flex; align-items:center; justify-content:center;
+        gap:7px; margin-top:4px; transition:background .15s;
+    }
+    .co-add-addr-btn:hover { background:#f0f5ff; }
+
+    .co-new-addr-form {
+        margin-top:14px; padding:14px;
+        border:1px solid #e0e0e0; border-radius:10px; background:#fafafa;
+    }
+    .co-form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .co-confirm-row { display:flex; gap:12px; align-items:flex-start; }
+    .co-confirm-icon {
+        width:36px; height:36px; border-radius:50%;
+        background:#e3f0ff; color:#2874f0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:14px; flex-shrink:0;
+    }
+    .co-confirm-body { flex:1; }
+    .co-confirm-label { font-size:11px; color:#888; margin-bottom:3px; }
+    .co-confirm-value { font-size:13px; color:#212121; line-height:1.6; }
+    .co-change-btn {
+        font-size:13px; color:#2874f0; background:none;
+        border:none; cursor:pointer; font-weight:600; white-space:nowrap; padding:0;
+    }
+
+    .co-item-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #f5f5f5; }
+    .co-item-row:last-of-type { border-bottom:none; }
+    .co-item-img img { width:56px; height:56px; object-fit:cover; border-radius:8px; border:1px solid #eee; }
+    .co-item-info { flex:1; }
+    .co-item-name { font-size:13px; font-weight:600; color:#212121; margin-bottom:4px; }
+    .co-item-meta { font-size:12px; color:#666; }
+    .co-item-old  { text-decoration:line-through; color:#aaa; margin-left:6px; }
+
+    .co-price-box { margin-top:16px; background:#f9f9f9; border-radius:10px; padding:14px; }
+    .co-price-row { display:flex; justify-content:space-between; font-size:13px; color:#333; margin-bottom:9px; }
+    .co-discount   { color:#388e3c; }
+    .co-free       { color:#388e3c; font-weight:600; }
+    .co-price-divider { border:none; border-top:1px solid #e8e8e8; margin:10px 0; }
+    .co-price-total   { display:flex; justify-content:space-between; font-size:15px; font-weight:700; color:#212121; }
+    .co-savings-pill  {
+        font-size:12px; color:#27500a;
+        background:#e8f5e9; padding:5px 12px;
+        border-radius:20px; display:inline-block;
+    }
+
+    .co-mini-confirm {
+        display:flex; justify-content:space-between; align-items:center;
+        background:#fff; border:1px solid #e8e8e8; border-radius:10px;
+        padding:10px 14px; font-size:13px; color:#555; margin-bottom:12px;
+    }
+    .co-mini-total { font-weight:700; color:#212121; font-size:14px; }
+
+    .co-pay-method {
+        display:flex; align-items:center; gap:12px; padding:14px;
+        border:1.5px solid #e0e0e0; border-radius:10px;
+        cursor:pointer; margin-bottom:10px; transition:all .15s;
+    }
+    .co-pay-method:hover { border-color:#2874f0; }
+    .co-pay-method.sel  { border-color:#2874f0; background:#f0f5ff; }
+
+    .co-pay-icon {
+        width:38px; height:38px; border-radius:8px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:18px; font-weight:700; flex-shrink:0;
+    }
+    .co-pay-upi  { background:#f0fdf4; color:#27500a; }
+    .co-pay-card { background:#f0f5ff; color:#2874f0; }
+    .co-pay-cod  { background:#fff7ed; color:#854f0b; }
+
+    .co-pay-body  { flex:1; }
+    .co-pay-name  { font-size:14px; font-weight:600; color:#212121; }
+    .co-pay-sub   { font-size:11px; color:#888; margin-top:2px; }
+    .co-pay-badge {
+        font-size:10px; font-weight:600; padding:3px 9px;
+        border-radius:20px; background:#e8f5e9; color:#27500a;
+    }
+
+    .co-pay-extra {
+        margin:-4px 0 10px 44px; padding:14px;
+        background:#fafafa; border:1px solid #e8e8e8; border-radius:10px;
+    }
+    .co-upi-apps { display:flex; gap:8px; margin-bottom:10px; }
+    .co-upi-app {
+        display:flex; flex-direction:column; align-items:center; gap:4px;
+        padding:8px 14px; border:1px solid #ddd; border-radius:8px;
+        background:#fff; cursor:pointer; font-size:11px; color:#555; transition:all .15s;
+    }
+    .co-upi-app:hover { border-color:#2874f0; }
+    .co-upi-app.sel   { border-color:#2874f0; color:#2874f0; background:#f0f5ff; }
+    .co-upi-icon      { font-size:18px; font-weight:700; }
+    .co-upi-or        { text-align:center; font-size:11px; color:#aaa; margin:8px 0; }
+
+    .co-error {
+        background:#fce8e8; color:#791f1f;
+        border:1px solid #f7c1c1; border-radius:8px;
+        padding:9px 13px; font-size:13px; margin-bottom:12px;
+        display:flex; align-items:center; gap:7px;
+    }
+    .co-secure {
+        text-align:center; font-size:11px; color:#aaa; margin-top:10px;
+        display:flex; align-items:center; justify-content:center; gap:5px;
+    }
+
+    .co-success {
+        display:flex; flex-direction:column; align-items:center;
+        padding:48px 20px; gap:12px; text-align:center;
+    }
+    .co-success-icon {
+        width:72px; height:72px; border-radius:50%;
+        background:#e8f5e9; color:#388e3c; font-size:30px;
+        display:flex; align-items:center; justify-content:center; margin-bottom:6px;
+    }
+    .co-success-title { font-size:22px; font-weight:700; color:#212121; margin:0; }
+    .co-success-sub   { font-size:14px; color:#666; line-height:1.7; margin:0; }
+    .co-order-num {
+        font-size:13px; color:#666;
+        background:#f5f5f5; border:1px solid #e0e0e0;
+        border-radius:8px; padding:7px 16px;
+    }
+
+    @@media (max-width:480px) {
+        .co-form-row { grid-template-columns:1fr; }
+        .co-upi-apps { flex-wrap:wrap; }
+    }
+</style>
+
+@code {
+    List<CartItemDetailDto> cartItems = new();
+    List<CustomerAddressDto> addresses = new();
+
+    int currentStep = 1;
+    bool isLoading = true;
+    bool isPlacing = false;
+    bool showNewAddrForm = false;
+
+    string selectedAddressId = string.Empty;
+    string selectedPayment = "UPI";
+    string selectedUpiApp = "GPay";
+    string upiId = string.Empty;
+    string cardNumber = string.Empty;
+    string cardExpiry = string.Empty;
+    string cardCvv = string.Empty;
+    string cardName = string.Empty;
+
+    string addrError = string.Empty;
+    string payError = string.Empty;
+    string orderError = string.Empty;
+    string placedOrderId = string.Empty;
+
+    // Holds the confirmed address for steps 2 & 3
+    PlaceOrderRequest confirmedAddr = new();
+    // Temp model for the new-address inline form
+    PlaceOrderRequest newAddr = new();
+
+    decimal TotalMRP   => cartItems.Sum(x => (x.OldPrice > x.Price ? x.OldPrice : x.Price) * x.Quantity);
+    decimal TotalPrice => cartItems.Sum(x => x.Price * x.Quantity);
+    decimal TotalDiscount => TotalMRP - TotalPrice;
+    bool HasDiscount => TotalDiscount > 0;
+
+    string TopbarTitle => currentStep switch
+    {
+        1 => "Select address",
+        2 => "Review order",
+        3 => "Payment",
+        4 => "Order confirmed",
+        _ => "Checkout"
+    };
+
+    string StepLabel(int s) => s switch
+    {
+        1 => "Address",
+        2 => "Review",
+        3 => "Payment",
+        4 => "Done",
+        _ => ""
+    };
+
+    string StepClass(int step) =>
+        step < currentStep ? "done" : step == currentStep ? "active" : "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        cartItems = await CartSvc.GetCartAsync();
+
+        if (!cartItems.Any())
+        {
+            Navigation.NavigateTo("/cart");
+            return;
+        }
+
+        addresses = await AddressSvc.GetMyAddressesAsync();
+
+        // Pre-select default address
+        var def = addresses.FirstOrDefault(x => x.IsDefault)
+                  ?? addresses.FirstOrDefault();
+        if (def != null)
+            selectedAddressId = def.Id;
+
+        isLoading = false;
+    }
+
+    void SelectAddress(CustomerAddressDto a)
+    {
+        selectedAddressId = a.Id;
+        showNewAddrForm = false;
+        addrError = string.Empty;
+    }
+
+    void ToggleNewAddrForm()
+    {
+        showNewAddrForm = !showNewAddrForm;
+        if (showNewAddrForm)
+        {
+            selectedAddressId = string.Empty;
+            newAddr = new PlaceOrderRequest();
+        }
+        addrError = string.Empty;
+    }
+
+    void SelectPayment(string method)
+    {
+        selectedPayment = method;
+        payError = string.Empty;
+    }
+
+    void GoToReview()
+    {
+        addrError = string.Empty;
+
+        if (showNewAddrForm)
+        {
+            if (string.IsNullOrWhiteSpace(newAddr.FullName)    ||
+                string.IsNullOrWhiteSpace(newAddr.PhoneNumber) ||
+                string.IsNullOrWhiteSpace(newAddr.Address)     ||
+                string.IsNullOrWhiteSpace(newAddr.City)        ||
+                string.IsNullOrWhiteSpace(newAddr.ZipCode))
+            {
+                addrError = "Please fill in all required fields.";
+                return;
+            }
+            confirmedAddr = new PlaceOrderRequest
+            {
+                FullName    = newAddr.FullName,
+                PhoneNumber = newAddr.PhoneNumber,
+                Address     = newAddr.Address,
+                City        = newAddr.City,
+                State       = newAddr.State,
+                ZipCode     = newAddr.ZipCode
+            };
+        }
+        else
+        {
+            var sel = addresses.FirstOrDefault(x => x.Id == selectedAddressId);
+            if (sel == null)
+            {
+                addrError = "Please select a delivery address.";
+                return;
+            }
+            confirmedAddr = new PlaceOrderRequest
+            {
+                FullName    = sel.FullName,
+                PhoneNumber = sel.PhoneNumber,
+                Address     = string.Join(", ",
+                                  new[] { sel.AddressLine1, sel.AddressLine2, sel.Landmark }
+                                  .Where(s => !string.IsNullOrWhiteSpace(s))),
+                City        = sel.City,
+                State       = sel.State,
+                ZipCode     = sel.ZipCode
+            };
+        }
+
+        currentStep = 2;
+    }
+
+    async Task PlaceOrder()
+    {
+        payError   = string.Empty;
+        orderError = string.Empty;
+
+        // Validate payment fields
+        if (selectedPayment == "Card")
+        {
+            if (string.IsNullOrWhiteSpace(cardNumber) ||
+                string.IsNullOrWhiteSpace(cardExpiry) ||
+                string.IsNullOrWhiteSpace(cardCvv)    ||
+                string.IsNullOrWhiteSpace(cardName))
+            {
+                payError = "Please fill in all card details.";
+                return;
+            }
+        }
+
+        if (selectedPayment == "UPI" &&
+            string.IsNullOrWhiteSpace(upiId) &&
+            string.IsNullOrWhiteSpace(selectedUpiApp))
+        {
+            payError = "Please select a UPI app or enter your UPI ID.";
+            return;
+        }
+
+        isPlacing = true;
+
+        var payload = new PlaceOrderRequest
+        {
+            FullName      = confirmedAddr.FullName,
+            PhoneNumber   = confirmedAddr.PhoneNumber,
+            Address       = confirmedAddr.Address,
+            City          = confirmedAddr.City,
+            State         = confirmedAddr.State,
+            ZipCode       = confirmedAddr.ZipCode,
+            PaymentMethod = selectedPayment
+        };
+
+        var (success, orderId, error) = await OrderSvc.PlaceOrderAsync(payload);
+
+        if (success)
+        {
+            placedOrderId = orderId;
+            currentStep = 4;
+        }
+        else
+        {
+            orderError = error ?? "Failed to place order. Please try again.";
+        }
+
+        isPlacing = false;
+    }
+
+    void HandleBack()
+    {
+        if (currentStep > 1 && currentStep < 4)
+            currentStep--;
+        else
+            Navigation.NavigateTo("/cart");
+    }
+}

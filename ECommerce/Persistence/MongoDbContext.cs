@@ -72,13 +72,13 @@ namespace ECommerce.Persistence
             _db.GetCollection<HeroBanner>("HeroBanners");
 
         public IMongoCollection<WishlistItem> Wishlists =>
-      _db.GetCollection<WishlistItem>("Wishlists");
+            _db.GetCollection<WishlistItem>("Wishlists");
 
         public IMongoCollection<PasswordResetToken> PasswordResetTokens =>
             _db.GetCollection<PasswordResetToken>("PasswordResetTokens");
 
 
         public IMongoCollection<CustomerAddress> CustomerAddresses =>
-    _db.GetCollection<CustomerAddress>("CustomerAddresses");
+            _db.GetCollection<CustomerAddress>("CustomerAddresses");
     }
 }

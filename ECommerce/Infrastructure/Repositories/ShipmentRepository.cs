@@ -16,16 +16,27 @@ public class ShipmentRepository : IShipmentRepository
     public async Task CreateAsync(Shipment shipment)
         => await _collection.InsertOneAsync(shipment);
 
-    public async Task<Shipment> GetByIdAsync(string id)
-        => await _collection.Find(x => x.Id == id && !x.IsDeleted)
-                            .FirstOrDefaultAsync();
+    public async Task<Shipment?> GetByIdAsync(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return null;
+
+        return await _collection
+            .Find(x => x.Id == id && !x.IsDeleted)
+            .FirstOrDefaultAsync();
+    }
 
     public async Task<List<Shipment>> GetByOrderIdAsync(string orderId)
-        => await _collection.Find(x => x.OrderId == orderId && !x.IsDeleted)
-                            .ToListAsync();
+        => await _collection
+            .Find(x => x.OrderId == orderId && !x.IsDeleted)
+            .ToListAsync();
 
     public async Task UpdateAsync(Shipment shipment)
-        => await _collection.ReplaceOneAsync(x => x.Id == shipment.Id, shipment);
+    {
+        await _collection.ReplaceOneAsync(
+            x => x.Id == shipment.Id && !x.IsDeleted,
+            shipment);
+    }
 
     public async Task<List<Shipment>> GetAllAsync()
     {
@@ -33,7 +44,6 @@ public class ShipmentRepository : IShipmentRepository
                                 .SortByDescending(x => x.CreatedOn)
                                 .ToListAsync();
     }
-
 
     public async Task<List<Shipment>> SearchAsync(ShipmentSearchDto dto)
     {
@@ -60,9 +70,15 @@ public class ShipmentRepository : IShipmentRepository
         if (dto.EndDate.HasValue)
             filter &= builder.Lte(x => x.CreatedOn, dto.EndDate.Value);
 
+        return await _collection.Find(filter)
+                                .SortByDescending(x => x.CreatedOn)
+                                .ToListAsync();
+    }
+
+    public async Task<Shipment?> GetSingleByOrderIdAsync(string orderId)
+    {
         return await _collection
-            .Find(filter)
-            .SortByDescending(x => x.CreatedOn)
-            .ToListAsync();
+            .Find(x => x.OrderId == orderId && !x.IsDeleted)
+            .FirstOrDefaultAsync();
     }
 }

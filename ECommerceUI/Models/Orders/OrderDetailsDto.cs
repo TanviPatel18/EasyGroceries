@@ -1,4 +1,4 @@
-﻿namespace ECommerceUI.Models.Sales
+﻿namespace ECommerceUI.Models.Orders
 {
     public class OrderDetailsDto
     {

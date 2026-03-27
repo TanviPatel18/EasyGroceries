@@ -5,7 +5,10 @@
 @using System.Net.Http.Json
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
-@inject RecentProductService RecentSvc
+
+@inject CategoryService CategorySvc
+@using System.Text.Json
+@* @inject RecentProductService RecentSvc *@
 @inject ProductService ProductSvc
 @inject CartService CartSvc
 @inject WishlistService WishlistSvc
@@ -271,14 +274,12 @@
             <button class="pd-btn-cart"
                     disabled="@(_product.StockQuantity == 0 || _addingCart)"
                     @onclick="AddToCart">
-                <i class="fa-solid fa-cart-plus"></i>
-                @(_addingCart ? "Adding..." : "Add to Cart")
-            </button>
 
-            <button class="pd-btn-buy"
-                    disabled="@(_product.StockQuantity == 0)"
-                    @onclick="BuyNow">
-                Buy Now
+                <i class="fa-solid fa-cart-plus"></i>
+
+                @(_addingCart
+                    ? "Adding..."
+                    : (cart.Contains(_product.Id) ? "Buy Now" : "Add to Cart"))
             </button>
 
             <button class="pd-btn-wish @(_isWishlisted ? "pd-wish-active" : "")"
@@ -298,54 +299,7 @@
 
     </div>
 
-    @if (_recentProducts != null && _recentProducts.Any())
-    {
-        <div class="recent-section">
-            <h3>Recently Viewed</h3>
-
-            <div class="recent-grid">
-                @foreach (var p in _recentProducts.Take(12))
-                {
-                    <div class="recent-card"
-                         @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
-
-                        <img src="@GetImage(p.ImageUrls)" />
-
-                        <div class="info">
-                            <p class="name">@p.ProductName</p>
-                            <p class="price">₹@p.Price.ToString("N0")</p>
-                        </div>
-
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
-    @if (_categoryProducts != null && _categoryProducts.Any())
-    {
-        <div class="recent-section">
-            <h3>Top Rated in this Category</h3>
-
-            <div class="recent-grid">
-                @foreach (var p in _categoryProducts.Take(12))
-                {
-                    <div class="recent-card"
-                         @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
-
-                        <img src="@GetImage(p.ImageUrls)" />
-
-                        <div class="info">
-                            <p class="name">@p.ProductName</p>
-                            <p class="price">₹@p.Price.ToString("N0")</p>
-                        </div>
-
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
+    
 
     @* ══════════════════════════════════
            REVIEWS SECTION
@@ -424,13 +378,14 @@
 
 </div>
     }
+
 @if (_recentProducts != null && _recentProducts.Any())
 {
     <div class="recent-section">
         <h3>Recently Viewed</h3>
 
         <div class="recent-grid">
-            @foreach (var p in _recentProducts.Take(12))
+            @foreach (var p in _recentProducts)
             {
                 <div class="recent-card"
                      @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
@@ -448,29 +403,37 @@
     </div>
 }
 
-@if (_relatedProducts.Any())
+@if (_categoryProducts == null)
 {
-    <div class="pd-related">
-        <h3>Related Products</h3>
+    <p>CategoryProducts is NULL</p>
+}
+else if (!_categoryProducts.Any())
+{
+    <p>No category products found</p>
+}
+else if (_categoryProducts != null && _categoryProducts.Any())
+{
+    <div class="recent-section">
+        <h3>Top Rated in this Category</h3>
 
-        <div class="pd-related-grid">
-            @foreach (var p in _relatedProducts)
+        <div class="recent-grid">
+            @foreach (var p in _categoryProducts.Take(12))
             {
-                <div class="pd-related-card"
-                     @onclick="() => GoToProduct(p.Id)">
+                <div class="recent-card"
+                     @onclick='() => Navigation.NavigateTo($"/product/{p.Id}")'>
 
                     <img src="@GetImage(p.ImageUrls)" />
-                    <p>@p.ProductName</p>
-                    <span>₹@p.Price.ToString("N0")</span>
+
+                    <div class="info">
+                        <p class="name">@p.ProductName</p>
+                        <p class="price">₹@p.Price.ToString("N0")</p>
+                    </div>
 
                 </div>
             }
         </div>
     </div>
 }
-
-}
-
 
 </div>
 
@@ -481,6 +444,7 @@
     List<ProductVm> _categoryProducts = new();
     ProductDetailDto? _product;
     List<ProductReviewDto>? _reviews;
+    HashSet<string> cart = new();
 
     bool _loading = true;
     int _activeImage = 0;
@@ -493,6 +457,8 @@
     string _cartMsg = "";
     string _wishMsg = "";
 
+    List<ProductVm> _relatedProducts = new();
+
     // ════════════════════════════════════
     //  INIT
     // ════════════════════════════════════
@@ -502,29 +468,68 @@
 
         await LoadProduct();
         await LoadWishlistStatus();
-        await LoadRelatedProducts();
-        await LoadCategoryProducts();
+
+        // ✅ LOAD CART
+        var cartItems = await CartSvc.GetCartAsync();
+        cart = cartItems.Select(x => x.ProductId).ToHashSet();
 
         if (_product != null)
         {
-            await RecentSvc.Add(new ProductVm
+            await AddProductToRecentAsync(new ProductVm
             {
                 Id = _product.Id,
                 ProductName = _product.ProductName,
                 Price = _product.Price,
                 ImageUrls = _product.ImageUrls
             });
-        }
 
-        await LoadRecentProducts();
+            await LoadRecentProducts();
+        }
 
         _activeImage = 0;
         _qty = 1;
-
         _loading = false;
     }
 
-    async Task LoadProduct()
+    // ════════════════════════════════════
+    //  LOCAL STORAGE HELPERS FOR RECENT PRODUCTS
+    // ════════════════════════════════════
+    private async Task<List<ProductVm>> GetRecentProductsAsync()
+    {
+        var json = await JS.InvokeAsync<string>("localStorage.getItem", "recent_products");
+        if (string.IsNullOrEmpty(json)) return new List<ProductVm>();
+        return JsonSerializer.Deserialize<List<ProductVm>>(json)!;
+    }
+
+    private async Task SaveRecentProductsAsync(List<ProductVm> products)
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", "recent_products", JsonSerializer.Serialize(products));
+    }
+
+    private async Task AddProductToRecentAsync(ProductVm product)
+    {
+        var list = await GetRecentProductsAsync();
+
+        list.RemoveAll(p => p.Id == product.Id);  // remove duplicates
+        list.Insert(0, product);                  // add to top
+        list = list.Take(10).ToList();            // keep max 20
+
+        await SaveRecentProductsAsync(list);
+    }
+
+    private async Task LoadRecentProducts()
+    {
+        var list = await GetRecentProductsAsync();
+        _recentProducts = list
+            .Where(p => _product == null || p.Id != _product.Id)  // don't show current product
+            .Take(10)
+            .ToList();
+    }
+
+    // ════════════════════════════════════
+    //  LOAD PRODUCT AND RELATED DATA
+    // ════════════════════════════════════
+    private async Task LoadProduct()
     {
         try
         {
@@ -532,9 +537,8 @@
 
             if (_product != null)
             {
-                await LoadRelatedProducts();
+                // Remove LoadRelatedProducts() entirely, just call one method
                 await LoadCategoryProducts();
-                LoadRecentProducts();
             }
         }
         catch
@@ -547,99 +551,115 @@
     {
         try
         {
-            var all = await ProductSvc.GetAllProducts();
+            if (_product?.CategoryId == null)
+            {
+                _categoryProducts = new List<ProductVm>();
+                return;
+            }
 
-            _categoryProducts = all
-                .Where(p => p.CategoryId == _product!.CategoryId && p.Id != _product.Id)
-                .OrderByDescending(p => p.Rating) // ⭐ BEST RATED
-                .Take(20)
-                .ToList();
+            // Remove the GetAllProducts() call entirely
+            _categoryProducts = await CategorySvc.GetProductsByCategory(_product.CategoryId);
         }
-        catch
+        catch (Exception ex)
         {
-            _categoryProducts = new();
+            Console.WriteLine($"LoadCategoryProducts error: {ex.Message}");
+            _categoryProducts = new List<ProductVm>();
         }
     }
-    async Task LoadWishlistStatus()
+
+    private async Task LoadWishlistStatus()
     {
         _isWishlisted = await WishlistSvc.IsInWishlistAsync(Id);
     }
-    async Task LoadRecentProducts()
+
+    private async Task LoadRelatedProducts()
     {
+        if (_product == null) return;
+
         try
         {
-            var recent = await RecentSvc.Get();
-
-            _recentProducts = recent
-                .Where(p => p.Id != _product!.Id)
-                .Take(10)
-                .ToList();
+            _categoryProducts = await CategorySvc
+    .GetProductsByCategory(_product.CategoryId);
         }
         catch
         {
-            _recentProducts = new();
+            _relatedProducts = new();
         }
     }
 
-    void GoToProduct(string id)
-    {
-        Navigation.NavigateTo($"/product/{id}");
-    }
-
-    // async Task LoadReviews()
-    // {
-    //     _reviews = await ProductSvc.GetReviews(Id);
-    // }
-
     // ════════════════════════════════════
-    //              QUANTITY
+    //  QUANTITY CONTROLS
     // ════════════════════════════════════
-    void IncQty()
+    private void IncQty()
     {
         if (_product != null && _qty < _product.StockQuantity)
             _qty++;
     }
 
-    void DecQty()
+    private void DecQty()
     {
         if (_qty > 1) _qty--;
     }
 
     // ════════════════════════════════════
-    //  ADD TO CART  →  POST api/cart/add
+    //  CART / BUY NOW
     // ════════════════════════════════════
-    async Task AddToCart()
+    private async Task AddToCart()
     {
         if (_product == null) return;
+
+        // 👉 If already in cart → go to cart (Buy Now)
+        if (cart.Contains(_product.Id))
+        {
+            Navigation.NavigateTo("/cart");
+            return;
+        }
 
         _addingCart = true;
 
         var success = await CartSvc.AddAsync(_product.Id, _qty);
 
-        _cartSuccess = success;
-        _cartMsg = success
-            ? "✓ Added to cart!"
-            : "Failed to add.";
+        if (success)
+        {
+            cart.Add(_product.Id);
+            _cartMsg = "✓ Added to cart!";
+            _cartSuccess = true;
+        }
+        else
+        {
+            _cartMsg = "Failed to add.";
+            _cartSuccess = false;
+        }
 
         _addingCart = false;
 
-        await Task.Delay(3000);
+        await Task.Delay(2000);
         _cartMsg = "";
     }
 
-    // ════════════════════════════════════
-    //  BUY NOW  →  go to checkout
-    // ════════════════════════════════════
-    async Task BuyNow()
+    private async Task BuyNow()
     {
-        await AddToCart();
+        if (_product == null) return;
+
+        // ✅ Only add if NOT already in cart
+        if (!cart.Contains(_product.Id))
+        {
+            var success = await CartSvc.AddAsync(_product.Id, _qty);
+
+            if (success)
+            {
+                cart.Add(_product.Id);
+            }
+        }
+
+        // ✅ Direct checkout
         Navigation.NavigateTo("/checkout");
     }
 
     // ════════════════════════════════════
-    //  WISHLIST  →  POST/DELETE api/wishlist
+    //  WISHLIST TOGGLE
     // ════════════════════════════════════
-    async Task ToggleWishlist()
+    private async Task ToggleWishlist()
     {
         if (_product == null) return;
 
@@ -660,79 +680,32 @@
         _wishMsg = "";
     }
 
-    async Task GoBack()
+    // ════════════════════════════════════
+    //  NAVIGATION
+    // ════════════════════════════════════
+    private async Task GoBack()
     {
         await JS.InvokeVoidAsync("history.back");
     }
 
-    // helper DTO for wishlist check response
-    class WishlistCheckDto
+    private void GoToProduct(string id)
     {
-        public bool Exists { get; set; }
+        Navigation.NavigateTo($"/product/{id}");
     }
 
-
-    // adding some releted product
-
-    string GetImage(List<string>? images)
+    // ════════════════════════════════════
+    //  HELPERS
+    // ════════════════════════════════════
+    private string GetImage(List<string>? images)
     {
         return images != null && images.Any()
             ? $"https://localhost:5001/{images.First()}"
             : "/images/no-image.png";
     }
 
-
-    List<ProductVm> _relatedProducts = new();
-    async Task LoadRelatedProducts()
+    // helper DTO for wishlist check response
+    private class WishlistCheckDto
     {
-        if (_product == null) return;
-
-        try
-        {
-            var all = await ProductSvc.GetAllProducts();
-
-            _relatedProducts = all
-                .Where(p => p.CategoryId == _product.CategoryId && p.Id != _product.Id)
-                .Take(6)
-                .ToList();
-        }
-        catch
-        {
-            _relatedProducts = new();
-        }
-    }
-
-
-    // for recently viewed
-
-    async Task SaveRecentProduct()
-    {
-        if (_product == null) return;
-
-        var json = await JS.InvokeAsync<string>("localStorage.getItem", "recentProducts");
-
-        List<string> items;
-
-        if (string.IsNullOrEmpty(json))
-        {
-            items = new List<string>();
-        }
-        else
-        {
-            items = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
-        }
-
-        // remove if already exists
-        items.Remove(_product.Id);
-
-        // add to top
-        items.Insert(0, _product.Id);
-
-        // limit to 10
-        items = items.Take(10).ToList();
-
-        var updatedJson = System.Text.Json.JsonSerializer.Serialize(items);
-
-        await JS.InvokeVoidAsync("localStorage.setItem", "recentProducts", updatedJson);
+        public bool Exists { get; set; }
     }
 }

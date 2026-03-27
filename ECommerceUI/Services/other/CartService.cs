@@ -13,7 +13,7 @@ namespace ECommerceUI.Services.other
             _http = http;
         }
 
-        public async Task<List<CartItemDto>> GetCartAsync()
+        public async Task<List<CartItemDetailDto>> GetCartAsync()
         {
             try
             {
@@ -26,7 +26,7 @@ namespace ECommerceUI.Services.other
                 if (!response.IsSuccessStatusCode) return new();
 
                 return await response.Content
-                    .ReadFromJsonAsync<List<CartItemDto>>() ?? new();
+                    .ReadFromJsonAsync<List<CartItemDetailDto>>() ?? new();
             }
             catch { return new(); }
         }

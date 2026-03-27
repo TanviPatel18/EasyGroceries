@@ -1,0 +1,662 @@
+@page "/my-orders"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Authorization
+@using ECommerceUI.Services
+@using ECommerceUI.Models.Orders
+@inject ShipmentService ShipmentSvc
+@inject OrderService OrderSvc
+@attribute [Authorize]
+
+<div class="mo-page">
+
+    @if (showDetail && selectedOrder != null)
+    {
+        @* ════════════ DETAIL VIEW ════════════ *@
+        <div class="page-topbar">
+            <button class="page-topbar-back" @onclick="CloseDetail">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <span class="page-topbar-title">Order details</span>
+        </div>
+
+        @* ID + Status *@
+        <div class="mo-card">
+            <div class="mo-detail-top">
+                <div>
+                    <div class="mo-id-lbl">Order ID</div>
+                    <div class="mo-detail-id">#@selectedOrder.Id</div>
+                    <div class="mo-detail-date">
+                        <i class="fa-regular fa-calendar"></i>
+                        @selectedOrder.OrderDate.ToString("dd MMM yyyy, hh:mm tt")
+                    </div>
+                </div>
+                <span class="mo-badge @StatusClass(selectedOrder.OrderStatus)">
+                    @StatusIcon(selectedOrder.OrderStatus) @selectedOrder.OrderStatus
+                </span>
+            </div>
+        </div>
+
+        @* Timeline *@
+        <div class="mo-card">
+            <div class="mo-card-title">Order timeline</div>
+            <div class="mo-timeline">
+                @{
+                    var steps = BuildTimeline(selectedOrder);
+                }
+                @for (int i = 0; i < steps.Count; i++)
+                {
+                    var step = steps[i];
+                    var isLast = i == steps.Count - 1;
+                    <div class="mo-tl-row">
+                        <div class="mo-tl-left">
+                            <div class="mo-tl-dot @step.DotClass"></div>
+                            @if (!isLast)
+                            {
+                                <div class="mo-tl-line @(step.Done ? "done" : "")"></div>
+                            }
+                        </div>
+                        <div class="mo-tl-body">
+                            <div class="mo-tl-title @(!step.Done ? "pending" : "")">
+                                @step.Title
+                            </div>
+                            <div class="mo-tl-sub">
+                                @(string.IsNullOrEmpty(step.Time) ? "Pending" : step.Time)
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ✅ ADD HERE (Tracking) *@
+        @if (!string.IsNullOrEmpty(selectedOrder.TrackingNumber))
+{
+    <div class="mo-card">
+        <div class="mo-card-title">Tracking</div>
+        <div style="font-size:13px;">
+            Tracking ID: <b>@selectedOrder.TrackingNumber</b>
+        </div>
+    </div>
+}
+
+        @* Items *@
+        @if (selectedOrderItems.Any())
+        {
+            <div class="mo-card">
+                <div class="mo-card-title">Items ordered</div>
+                @foreach (var item in selectedOrderItems)
+                {
+                    <div class="mo-item-row">
+                        <div class="mo-item-img">
+                            <img src="/images/no-image.png" alt="@item.ProductName" />
+                        </div>
+                        <div class="mo-item-info">
+                            <div class="mo-item-name">@item.ProductName</div>
+                            <div class="mo-item-meta">
+                                Qty: @item.Quantity &nbsp;&middot;&nbsp;
+                                &#8377;@item.Price.ToString("N0") each
+                            </div>
+                            <div class="mo-item-total">
+                                &#8377;@((item.Quantity * item.Price ).ToString("N0"))
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+
+        @* Address *@
+        @if (selectedOrder.ShippingAddress != null)
+        {
+            <div class="mo-card">
+                <div class="mo-card-title">Delivery address</div>
+                <div class="mo-addr-text">
+                    <b>@selectedOrder.ShippingAddress.FullName</b>
+                    &nbsp;&middot;&nbsp; @selectedOrder.ShippingAddress.PhoneNumber<br />
+                    @selectedOrder.ShippingAddress.Address<br />
+                    @selectedOrder.ShippingAddress.City,
+                    @selectedOrder.ShippingAddress.State &mdash;
+                    @selectedOrder.ShippingAddress.ZipCode<br />
+                    @selectedOrder.ShippingAddress.Country
+                </div>
+            </div>
+        }
+
+        @* Price *@
+        <div class="mo-card">
+            <div class="mo-card-title">Price details</div>
+            <div class="mo-price-box">
+                <div class="mo-price-row">
+                    <span>Order total</span>
+                    <span>&#8377;@selectedOrder.OrderTotal.ToString("N0")</span>
+                </div>
+                <div class="mo-price-row">
+                    <span>Delivery</span>
+                    <span class="mo-free">FREE</span>
+                </div>
+                <div class="mo-price-divider"></div>
+                <div class="mo-price-total">
+                    <span>Total paid</span>
+                    <span>&#8377;@selectedOrder.OrderTotal.ToString("N0")</span>
+                </div>
+                @if (!string.IsNullOrEmpty(selectedOrder.PaymentMethod))
+                {
+                    <div class="mo-price-row" style="margin-top:8px;font-size:12px;color:#888">
+                        <span>Paid via</span>
+                        <span>@selectedOrder.PaymentMethod</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Actions *@
+        <div class="mo-detail-actions">
+            @if (selectedOrder.ShippingStatus is "Shipped" or "Processing")
+            {
+                <button class="cart-checkout-btn" @onclick="TrackOrder">
+                    <i class="fa-solid fa-truck"></i> Track shipment
+                </button>
+            }
+            @if (selectedOrder.OrderStatus == "Delivered")
+            {
+                <button class="cart-checkout-btn"
+                        @onclick="() => ReOrder(selectedOrder)">
+                    <i class="fa-solid fa-rotate-right"></i> Re-order
+                </button>
+            }
+            @if (selectedOrder.OrderStatus == "Placed")
+            {
+                <button class="mo-cancel-btn"
+        disabled="@isCancelling"
+        @onclick="() => CancelOrderAsync(selectedOrder.Id)">
+    @(isCancelling ? "Cancelling..." : "Cancel order")
+</button>
+            }
+            @if (!string.IsNullOrEmpty(actionError))
+            {
+                <div class="co-error">
+                    <i class="fa-solid fa-circle-exclamation"></i> @actionError
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @* ════════════ LIST VIEW ════════════ *@
+        <div class="page-topbar">
+            <button class="page-topbar-back" @onclick="GoBack">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <span class="page-topbar-title">My orders</span>
+        </div>
+
+        <div class="mo-filters">
+            @foreach (var f in filters)
+            {
+                var filter = f;
+                <button class="mo-chip @(activeFilter == filter ? "on" : "")"
+                        @onclick="() => activeFilter = filter">
+                    @filter
+                </button>
+            }
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="cart-loading">Loading orders...</div>
+        }
+        else if (!FilteredOrders.Any())
+        {
+            <div class="mo-empty">
+                <div class="mo-empty-icon">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <h3>No orders found</h3>
+                <p>
+                    @(activeFilter == "All"
+                        ? "You haven't placed any orders yet."
+                        : $"No {activeFilter.ToLower()} orders.")
+                </p>
+                <button class="cart-checkout-btn"
+                        style="max-width:220px;margin:0 auto"
+                        @onclick='() => Navigation.NavigateTo("/")'>
+                    Start shopping
+                </button>
+            </div>
+        }
+        else
+        {
+            @foreach (var order in FilteredOrders)
+            {
+                var o = order;
+                <div class="mo-card mo-order-card"
+                     @onclick="() => OpenDetail(o)">
+
+                    <div class="mo-card-top">
+                        <div>
+                            <div class="mo-id-lbl">Order ID</div>
+                            <div class="mo-order-id">#@o.Id</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div class="mo-order-date">
+                                @o.OrderDate.ToString("dd MMM yyyy")
+                            </div>
+                            <span class="mo-badge @StatusClass(o.OrderStatus)">
+                                @StatusIcon(o.OrderStatus) @o.OrderStatus
+                            </span>
+                        </div>
+                    </div>
+
+                    @* First item preview *@
+                    @if (itemsMap.TryGetValue(o.Id, out var items) && items.Any())
+                    {
+                        var first = items.First();
+                        var extra = items.Count - 1;
+                        <div class="mo-preview-row">
+                            <div class="mo-preview-img">
+                                <img src="/images/no-image.png" alt="@first.ProductName" />
+                            </div>
+                            <div class="mo-preview-info">
+                                <div class="mo-preview-name">@first.ProductName</div>
+                                <div class="mo-preview-meta">
+                                    Qty: @first.Quantity &nbsp;&middot;&nbsp;
+                                    &#8377;@first.Price.ToString("N0")
+                                </div>
+                            </div>
+                            @if (extra > 0)
+                            {
+                                <div class="mo-extra-pill">+@extra more</div>
+                            }
+                        </div>
+                    }
+
+                    <div class="mo-card-bottom">
+                        <div class="mo-order-total">
+                            &#8377;@o.OrderTotal.ToString("N0")
+                        </div>
+                        <div class="mo-card-actions"
+                             @onclick:stopPropagation="true">
+                            @if (o.ShippingStatus is "Shipped" or "Processing")
+                            {
+                                <button class="mo-act-btn mo-act-primary"
+                                        @onclick="() => { OpenDetail(o); TrackOrder(); }">
+                                    Track
+                                </button>
+                            }
+                            @if (o.OrderStatus == "Delivered")
+                            {
+                                <button class="mo-act-btn mo-act-primary"
+                                        @onclick="() => ReOrder(o)">
+                                    Re-order
+                                </button>
+                            }
+                            @if (o.OrderStatus == "Placed")
+                            {
+                                <button class="mo-act-btn mo-act-danger"
+                                        @onclick="() => CancelOrderAsync(o.Id)">
+                                    Cancel
+                                </button>
+                            }
+                            <button class="mo-act-btn">Details</button>
+                        </div>
+                    </div>
+
+                </div>
+            }
+        }
+    }
+</div>
+
+<style>
+    .mo-page { max-width:680px; margin:0 auto; padding:0 0 80px; }
+
+    .mo-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; padding:0 2px; }
+    .mo-chip {
+        padding:7px 16px; border-radius:20px;
+        border:1px solid #ddd; background:#fff;
+        font-size:13px; color:#555; cursor:pointer; font-weight:500; transition:all .15s;
+    }
+    .mo-chip:hover { border-color:#2874f0; color:#2874f0; }
+    .mo-chip.on    { background:#2874f0; color:#fff; border-color:#2874f0; }
+
+    .mo-card {
+        background:#fff; border:1px solid #e8e8e8;
+        border-radius:12px; padding:16px; margin-bottom:12px;
+    }
+    .mo-order-card { cursor:pointer; transition:border-color .15s, box-shadow .15s; }
+    .mo-order-card:hover {
+        border-color:#2874f0;
+        box-shadow:0 2px 12px rgba(40,116,240,.08);
+    }
+    .mo-card-title { font-size:14px; font-weight:700; color:#212121; margin-bottom:14px; }
+
+    .mo-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        font-size:11px; font-weight:600;
+        padding:3px 10px; border-radius:20px; margin-top:4px;
+    }
+    .mo-badge-placed      { background:#e3f0ff; color:#185fa5; }
+    .mo-badge-processing  { background:#fff7ed; color:#854f0b; }
+    .mo-badge-shipped     { background:#fff3cd; color:#664d03; }
+    .mo-badge-delivered   { background:#e8f5e9; color:#27500a; }
+    .mo-badge-cancelled   { background:#fce8e8; color:#791f1f; }
+
+    .mo-card-top {
+        display:flex; justify-content:space-between;
+        align-items:flex-start; margin-bottom:12px;
+    }
+    .mo-id-lbl    { font-size:10px; color:#aaa; }
+    .mo-order-id  { font-size:13px; font-weight:700; color:#212121; }
+    .mo-order-date { font-size:11px; color:#888; }
+
+    .mo-preview-row {
+        display:flex; gap:10px; align-items:center;
+        padding:10px 0; border-top:1px solid #f5f5f5;
+        border-bottom:1px solid #f5f5f5; margin-bottom:10px;
+    }
+    .mo-preview-img img { width:50px; height:50px; border-radius:8px; object-fit:cover; border:1px solid #eee; }
+    .mo-preview-info  { flex:1; overflow:hidden; }
+    .mo-preview-name  { font-size:13px; font-weight:600; color:#212121; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+    .mo-preview-meta  { font-size:11px; color:#888; }
+    .mo-extra-pill    { font-size:11px; color:#666; background:#f5f5f5; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+
+    .mo-card-bottom { display:flex; justify-content:space-between; align-items:center; }
+    .mo-order-total { font-size:15px; font-weight:700; color:#212121; }
+    .mo-card-actions { display:flex; gap:8px; }
+
+    .mo-act-btn {
+        padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600;
+        cursor:pointer; border:1px solid #ddd; background:none; color:#333; transition:all .15s;
+    }
+    .mo-act-btn:hover     { background:#f5f5f5; }
+    .mo-act-primary       { background:#2874f0; color:#fff; border-color:#2874f0; }
+    .mo-act-primary:hover { opacity:.9; background:#2874f0; }
+    .mo-act-danger        { color:#a32d2d; border-color:#f7c1c1; }
+    .mo-act-danger:hover  { background:#fce8e8; }
+
+    /* Detail */
+    .mo-detail-top { display:flex; justify-content:space-between; align-items:flex-start; }
+    .mo-detail-id  { font-size:16px; font-weight:700; color:#212121; margin-bottom:4px; }
+    .mo-detail-date { font-size:12px; color:#888; display:flex; align-items:center; gap:5px; }
+
+    .mo-timeline { padding:4px 0; }
+    .mo-tl-row   { display:flex; gap:14px; }
+    .mo-tl-left  { display:flex; flex-direction:column; align-items:center; width:16px; flex-shrink:0; }
+    .mo-tl-dot   { width:16px; height:16px; border-radius:50%; border:2px solid #ddd; background:#fff; flex-shrink:0; }
+    .mo-tl-dot.done   { background:#388e3c; border-color:#388e3c; }
+    .mo-tl-dot.active { background:#2874f0; border-color:#2874f0; }
+    .mo-tl-line  { flex:1; width:2px; background:#e0e0e0; min-height:20px; margin:2px 0; }
+    .mo-tl-line.done { background:#388e3c; }
+    .mo-tl-body  { padding-bottom:22px; flex:1; }
+    .mo-tl-title { font-size:13px; font-weight:600; color:#212121; margin-bottom:2px; }
+    .mo-tl-title.pending { color:#aaa; font-weight:400; }
+    .mo-tl-sub   { font-size:11px; color:#888; }
+
+    .mo-item-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #f5f5f5; }
+    .mo-item-row:last-child { border-bottom:none; }
+    .mo-item-img img { width:60px; height:60px; border-radius:8px; object-fit:cover; border:1px solid #eee; }
+    .mo-item-info { flex:1; }
+    .mo-item-name  { font-size:13px; font-weight:600; color:#212121; margin-bottom:4px; }
+    .mo-item-meta  { font-size:12px; color:#888; margin-bottom:4px; }
+    .mo-item-total { font-size:13px; font-weight:700; color:#388e3c; }
+
+    .mo-addr-text { font-size:13px; color:#333; line-height:1.8; }
+
+    .mo-price-box     { background:#f9f9f9; border-radius:10px; padding:14px; }
+    .mo-price-row     { display:flex; justify-content:space-between; font-size:13px; color:#333; margin-bottom:8px; }
+    .mo-free          { color:#388e3c; font-weight:600; }
+    .mo-price-divider { border:none; border-top:1px solid #e8e8e8; margin:8px 0; }
+    .mo-price-total   { display:flex; justify-content:space-between; font-size:15px; font-weight:700; color:#212121; }
+
+    .mo-detail-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+    .mo-cancel-btn {
+        width:100%; padding:12px; background:none;
+        border:1.5px solid #f7c1c1; border-radius:8px;
+        color:#a32d2d; font-size:14px; font-weight:600;
+        cursor:pointer; transition:background .15s;
+    }
+    .mo-cancel-btn:hover   { background:#fce8e8; }
+    .mo-cancel-btn:disabled { opacity:.6; cursor:not-allowed; }
+
+    .mo-empty {
+        display:flex; flex-direction:column; align-items:center;
+        padding:60px 20px; gap:12px; text-align:center;
+    }
+    .mo-empty-icon { font-size:48px; color:#ddd; margin-bottom:8px; }
+    .mo-empty h3   { font-size:18px; color:#212121; }
+    .mo-empty p    { font-size:14px; color:#888; }
+
+    .co-error {
+        background:#fce8e8; color:#791f1f;
+        border:1px solid #f7c1c1; border-radius:8px;
+        padding:9px 13px; font-size:13px;
+        display:flex; align-items:center; gap:7px;
+    }
+
+    @@media (max-width:480px) {
+        .mo-filters { gap:6px; }
+        .mo-chip { font-size:12px; padding:6px 12px; }
+    }
+</style>
+
+@code {
+    List<OrderDto> orders = new();
+    Dictionary<string, List<OrderItemDto>> itemsMap = new();
+
+    bool isLoading = true;
+    bool isCancelling = false;
+    bool showDetail = false;
+
+    OrderDto? selectedOrder = null;
+    List<OrderItemDto> selectedOrderItems = new();
+    string actionError = string.Empty;
+
+    string activeFilter = "All";
+    readonly List<string> filters = new() { "All", "Placed", "Shipped", "Delivered", "Cancelled" };
+
+    IEnumerable<OrderDto> FilteredOrders =>
+        activeFilter == "All"
+            ? orders
+            : orders.Where(o =>
+                o.OrderStatus.Equals(activeFilter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+   async Task LoadOrders()
+{
+    isLoading = true;
+
+    orders = (await OrderSvc.GetMyOrdersAsync())
+             .OrderByDescending(o => o.OrderDate)
+             .ToList();
+
+    // Load items + shipment safely
+    var tasks = orders.Select(async o =>
+    {
+        var items = await OrderSvc.GetOrderItemsAsync(o.Id);
+
+        var shipment = await ShipmentSvc.GetByOrderId(o.Id);
+
+        if (shipment != null)
+        {
+            o.ShippingStatus = shipment.Status;
+            o.ShippedDate = shipment.ShippedDate;
+            o.DeliveredDate = shipment.DeliveredDate;
+            o.TrackingNumber = shipment.TrackingNumber;
+        }
+        else
+        {
+            // Safe defaults (NO CRASH)
+            o.ShippingStatus ??= "Pending";
+            o.TrackingNumber = null;
+            o.ShippedDate = null;
+            o.DeliveredDate = null;
+        }
+
+        return (o.Id, items);
+    });
+
+    var results = await Task.WhenAll(tasks);
+
+    itemsMap = results.ToDictionary(x => x.Id, x => x.items);
+
+    isLoading = false;
+}
+
+    async Task OpenDetail(OrderDto order)
+    {
+        selectedOrder = order;
+        selectedOrderItems = itemsMap.ContainsKey(order.Id)
+            ? itemsMap[order.Id]
+            : new List<OrderItemDto>();
+        actionError = string.Empty;
+        showDetail = true;
+        await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+    }
+
+    void CloseDetail()
+    {
+        showDetail = false;
+        selectedOrder = null;
+        selectedOrderItems = new();
+        actionError = string.Empty;
+    }
+
+    async Task ReOrder(OrderDto order)
+    {
+        var items = itemsMap.ContainsKey(order.Id)
+            ? itemsMap[order.Id]
+            : new List<OrderItemDto>();
+
+        foreach (var item in items)
+            await OrderSvc.AddToCartAsync(item.ProductId, item.Quantity);
+
+        Navigation.NavigateTo("/cart");
+    }
+
+    async Task CancelOrderAsync(string orderId)
+{
+    var confirm = await JS.InvokeAsync<bool>(
+        "confirm", "Are you sure you want to cancel this order?");
+    if (!confirm) return;
+
+    isCancelling = true;
+    actionError = string.Empty;
+
+    var (success, error) = await OrderSvc.CancelOrderAsync(orderId);
+
+    if (success)
+    {
+        CloseDetail();
+        await LoadOrders();
+    }
+    else
+    {
+        actionError = error ?? "Failed to cancel order.";
+    }
+
+    isCancelling = false;
+}
+   void TrackOrder()
+{
+    if (selectedOrder != null)
+    {
+        Navigation.NavigateTo($"/track/{selectedOrder.Id}");
+    }
+}
+
+    async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+
+    string StatusClass(string status) => status?.ToLower() switch
+    {
+        "placed"      => "mo-badge-placed",
+        "processing"  => "mo-badge-processing",
+        "shipped"     => "mo-badge-shipped",
+        "delivered"   => "mo-badge-delivered",
+        "cancelled"   => "mo-badge-cancelled",
+        _             => "mo-badge-placed"
+    };
+
+    string StatusIcon(string status) => status?.ToLower() switch
+    {
+        "placed"      => "🕐",
+        "processing"  => "📦",
+        "shipped"     => "🚚",
+        "delivered"   => "✅",
+        "cancelled"   => "❌",
+        _             => "•"
+    };
+
+    List<TlStep> BuildTimeline(OrderDto order)
+    {
+        var rank = order.OrderStatus?.ToLower() switch
+        {
+            "placed"      => 1,
+            "processing"  => 2,
+            "shipped"     => 3,
+            "delivered"   => 4,
+            _             => 0
+        };
+
+        if (order.OrderStatus?.ToLower() == "cancelled")
+        {
+            return new List<TlStep>
+            {
+                new() { Title = "Order placed",    Done = true, DotClass = "done",
+                        Time = order.OrderDate.ToString("dd MMM, hh:mm tt") },
+                new() { Title = "Order cancelled", Done = true, DotClass = "done",
+                        Time = "—" }
+            };
+        }
+
+        return new List<TlStep>
+        {
+            new() {
+                Title    = "Order placed",
+                Done     = rank >= 1,
+                DotClass = rank >= 1 ? "done" : "",
+                Time     = rank >= 1 ? order.OrderDate.ToString("dd MMM, hh:mm tt") : ""
+            },
+            new() {
+                Title    = "Payment confirmed",
+                Done     = rank >= 1,
+                DotClass = rank >= 1 ? "done" : "",
+                Time     = rank >= 1 ? order.OrderDate.ToString("dd MMM, hh:mm tt") : ""
+            },
+            new() {
+                Title    = "Shipped",
+                Done     = rank >= 3,
+                DotClass = rank == 2 ? "active" : rank >= 3 ? "done" : "",
+                Time     = order.ShippedDate?.ToString("dd MMM, hh:mm tt") ?? ""
+            },
+            new() {
+                Title    = "Out for delivery",
+                Done     = rank >= 4,
+                DotClass = rank == 3 ? "active" : rank >= 4 ? "done" : "",
+                Time     = ""
+            },
+            new() {
+                Title    = "Delivered",
+                Done     = rank >= 4,
+                DotClass = rank >= 4 ? "done" : "",
+                Time     = order.DeliveredDate?.ToString("dd MMM, hh:mm tt") ?? ""
+            }
+        };
+    }
+
+    class TlStep
+    {
+        public string Title    { get; set; } = string.Empty;
+        public string Time     { get; set; } = string.Empty;
+        public bool   Done     { get; set; }
+        public string DotClass { get; set; } = string.Empty;
+    }
+}

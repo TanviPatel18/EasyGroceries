@@ -22,7 +22,7 @@ public class Shipment
     public DateTime? ShippedDate { get; set; }
     public DateTime? DeliveredDate { get; set; }
 
-    public string DeliveredBy { get; set; }
+    public string? DeliveredBy { get; set; }
 
     //public List<ShipmentStatusHistory> StatusHistory { get; set; }
 

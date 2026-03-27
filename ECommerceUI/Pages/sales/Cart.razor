@@ -1,5 +1,4 @@
-﻿
-@page "/cart"
+﻿@page "/cart"
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -150,7 +149,7 @@
 
 @code {
 
-    List<CartItemDto> cartItems = new();
+    List<CartItemDetailDto> cartItems = new();
     bool isLoading = true;
 
     decimal TotalPrice => cartItems.Sum(x => x.Price * x.Quantity);
@@ -172,14 +171,14 @@
         StateHasChanged();
     }
 
-    async Task IncreaseQty(CartItemDto item)
+    async Task IncreaseQty(CartItemDetailDto item)
     {
         item.Quantity++;
         await CartSvc.UpdateQuantityAsync(item.ProductId, item.Quantity);
         StateHasChanged();
     }
 
-    async Task DecreaseQty(CartItemDto item)
+    async Task DecreaseQty(CartItemDetailDto item)
     {
         if (item.Quantity <= 1)
         {
@@ -191,7 +190,7 @@
         StateHasChanged();
     }
 
-    async Task RemoveItem(CartItemDto item)
+    async Task RemoveItem(CartItemDetailDto item)
     {
         await CartSvc.RemoveAsync(item.ProductId);
         cartItems.RemoveAll(x => x.ProductId == item.ProductId);

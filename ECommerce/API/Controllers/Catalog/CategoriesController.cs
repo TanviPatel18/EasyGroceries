@@ -73,6 +73,11 @@ namespace ECommerce.API.Controllers.Catalog
         [HttpPost("filter-products")]
         public async Task<IActionResult> GetProductsByCategory([FromBody] CategoryFilterDto dto)
         {
+            Console.WriteLine($"CategoryId received: '{dto?.Id}'");
+
+            if (dto == null || string.IsNullOrEmpty(dto.Id))
+                return BadRequest("CategoryId is required");
+
             var result = await _categoryService.GetProductsByCategoryAsync(dto);
             return Ok(result);
         }

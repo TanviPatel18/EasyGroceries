@@ -11,6 +11,13 @@ namespace ECommerceUI.Services
         {
             _http = http;
         }
+        public async Task<ShipmentDto?> GetByOrderId(string orderId)
+        {
+            var list = await _http.GetFromJsonAsync<List<ShipmentDto>>(
+                $"api/shipments/order/{orderId}");
+
+            return list?.FirstOrDefault();
+        }
 
         public async Task<List<ShipmentDto>> GetAll()
         {

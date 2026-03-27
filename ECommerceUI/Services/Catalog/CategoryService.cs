@@ -43,4 +43,18 @@ public class CategoryService
             "api/catalog/categories/Update",
             dto);
     }
+    public async Task<List<ProductVm>> GetProductsByCategory(string categoryId)
+    {
+        var dto = new CategoryFilterDto
+        {
+            Id = categoryId
+        };
+
+        var response = await _http.PostAsJsonAsync(
+            "api/catalog/categories/filter-products", dto);
+
+        response.EnsureSuccessStatusCode(); // throws if 400
+
+        return await response.Content.ReadFromJsonAsync<List<ProductVm>>();
+    }
 }
