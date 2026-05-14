@@ -8,7 +8,7 @@ public class Shipment
     public string Id { get; set; }
 
     public string OrderId { get; set; }
-
+    public string VendorId { get; set; }
     public string TrackingNumber { get; set; }
 
     public string? CarrierName { get; set; }

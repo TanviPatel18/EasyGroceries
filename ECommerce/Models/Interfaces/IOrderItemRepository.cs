@@ -5,6 +5,7 @@ namespace ECommerce.Models.Interfaces
     public interface IOrderItemRepository
     {
         Task AddItemsAsync(List<OrderItem> items);
+        Task<List<OrderItem>> GetByVendorIdAsync(string vendorId);
         Task<List<OrderItem>> GetByOrderIdAsync(string orderId);
     }
 }

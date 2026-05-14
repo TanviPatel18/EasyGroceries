@@ -81,4 +81,11 @@ public class ShipmentRepository : IShipmentRepository
             .Find(x => x.OrderId == orderId && !x.IsDeleted)
             .FirstOrDefaultAsync();
     }
+    public async Task<List<Shipment>> GetByVendorIdAsync(string vendorId)
+    {
+        return await _collection
+            .Find(x => x.VendorId == vendorId && !x.IsDeleted)
+            .SortByDescending(x => x.CreatedOn)
+            .ToListAsync();
+    }
 }

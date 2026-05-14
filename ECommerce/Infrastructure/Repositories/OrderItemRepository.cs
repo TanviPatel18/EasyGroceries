@@ -26,6 +26,13 @@ namespace ECommerce.Infrastructure.Repositories
                 .Find(x => x.OrderId == orderId && !x.IsDeleted)
                 .ToListAsync();
         }
+
+        public async Task<List<OrderItem>> GetByVendorIdAsync(string vendorId) // ← ADD
+        {
+            return await _collection
+                .Find(x => x.VendorId == vendorId && !x.IsDeleted)
+                .ToListAsync();
+        }
     }
 }
 

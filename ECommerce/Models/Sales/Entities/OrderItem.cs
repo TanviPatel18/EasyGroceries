@@ -22,7 +22,9 @@ namespace ECommerce.Models.Sales.Entities
         public int Quantity { get; set; }
 
         public decimal UnitPrice { get; set; }
-
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string VendorId { get; set; } = string.Empty;   // ← ADD
+        public string VendorName { get; set; } = string.Empty;
         public bool IsDeleted { get; set; } = false;
     }
 }

@@ -10,6 +10,7 @@ namespace ECommerce.Models.Interfaces
         Task<List<Shipment>> GetByOrderIdAsync(string orderId);
         Task UpdateAsync(Shipment shipment);
         Task<List<Shipment>> GetAllAsync();
+        Task<List<Shipment>> GetByVendorIdAsync(string vendorId);
         Task<List<Shipment>> SearchAsync(ShipmentSearchDto dto);
     }
 }

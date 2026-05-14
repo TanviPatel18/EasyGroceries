@@ -1,4 +1,5 @@
 ﻿using ECommerce.Application.Sales.DTOs;
+using ECommerce.Application.Users.DTOs;
 using ECommerce.Models.Sales.Entities;
 
 namespace ECommerce.Application.Sales.Interfaces
@@ -14,5 +15,12 @@ namespace ECommerce.Application.Sales.Interfaces
         Task UpdateOrderStatusAsync(string orderId, string orderStatus, string paymentStatus, string shippingStatus);
         Task DeleteOrderAsync(string orderId);
         Task<List<OrderItem>> GetOrderItemsAsync(string orderId);
+
+
+
+        // ── Vendor ──
+        Task<List<VendorOrderDto>> GetOrdersByVendorAsync(string vendorId);
+        Task UpdateVendorOrderStatusAsync(string orderId, string status);
+
     }
 }

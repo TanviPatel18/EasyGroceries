@@ -1,0 +1,210 @@
+﻿@page "/vendor/orders"
+@layout VendorLayout
+@using Microsoft.AspNetCore.Authorization
+@using ECommerceVendor.Services
+@using ECommerceVendor.Services
+@using ECommerceVendor.Models
+@inject VendorOrderService VendorSvc
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "Vendor")]
+
+<link rel="stylesheet" href="css/vendor-orders.css" />
+
+<div class="vo-page">
+    <div class="page-topbar">
+        <span class="page-topbar-title">📦 My Orders</span>
+        <button class="vo-refresh" @onclick="Load">
+            🔄 Refresh
+        </button>
+    </div>
+
+    <div class="vo-filters">
+        @foreach (var f in filters)
+        {
+            var filter = f;
+            <button class="vo-chip @(activeFilter == filter ? "on" : "")"
+                    @onclick="() => activeFilter = filter">
+                @filter
+            </button>
+        }
+   
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="vo-loading">Loading orders...</div>
+    }
+    else if (!FilteredOrders.Any())
+    {
+        <div class="vo-empty">
+            <i class="fa-solid fa-box-open"></i>
+            <p>No orders found.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var order in FilteredOrders)
+        {
+            var o = order;
+            <div class="vo-card">
+                <div class="vo-card-top">
+                    <div>
+                        <div class="vo-label">Order ID</div>
+                        <div class="vo-order-id">#@o.OrderId</div>
+                        <div class="vo-date">
+                            @o.OrderDate.ToString("dd MMM yyyy, hh:mm tt")
+                        </div>
+                    </div>
+                    <span class="vo-badge @StatusClass(o.OrderStatus)">
+                        @StatusIcon(o.OrderStatus) @o.OrderStatus
+                    </span>
+                </div>
+
+                <div class="vo-customer">
+                    <i class="fa-solid fa-user"></i>
+                    @o.CustomerName &nbsp;·&nbsp;
+                    <i class="fa-solid fa-phone"></i>
+                    @o.CustomerPhone
+                    &nbsp;·&nbsp;
+                    @o.ShippingCity, @o.ShippingState
+                </div>
+
+                <div class="vo-items">
+                    @foreach (var item in o.Items)
+                    {
+                        <div class="vo-item-row">
+                            <span class="vo-item-name">@item.ProductName</span>
+                            <span class="vo-item-qty">x@item.Quantity</span>
+                            <span class="vo-item-price">
+                                ₹@((item.Quantity * item.UnitPrice).ToString("N0"))
+                            </span>
+                        </div>
+                    }
+                </div>
+
+                <div class="vo-card-bottom">
+                    <div class="vo-total">
+                        Total: <strong>₹@o.VendorTotal.ToString("N0")</strong>
+                    </div>
+
+                    <div class="vo-actions">
+                        @if (o.OrderStatus == "Placed")
+                        {
+                            <button class="vo-btn vo-btn-primary"
+                                    disabled="@isUpdating"
+                                    @onclick='() => UpdateStatus(o.OrderId, "Processing")'>
+                                Accept Order
+                            </button>
+                        }
+                        @if (o.OrderStatus == "Processing")
+                        {
+                            <button class="vo-btn vo-btn-success"
+                                    @onclick='() => UpdateStatus(o.OrderId, "ReadyToShip")'>
+                                                                    
+                                Mark Ready to Ship
+                            </button>
+                        }
+                        @if (o.OrderStatus == "ReadyToShip")
+                        {
+                            <div class="vo-ready-badge">
+                                ✅ Ready — Waiting for pickup
+                            </div>
+                        }
+                        @if (o.OrderStatus == "Shipped")
+                        {
+                            <div class="vo-shipped-badge">
+                                🚚 Shipped
+                            </div>
+                        }
+                        @if (o.OrderStatus == "Delivered")
+                        {
+                            <div class="vo-delivered-badge">
+                                ✅ Delivered
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(statusMsg)
+                                                     && lastUpdatedOrderId == o.OrderId)
+                {
+                    <div class="vo-msg">@statusMsg</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    List<VendorOrderDto> orders = new();
+    bool isLoading = true;
+    string activeFilter = "All";
+    string statusMsg = string.Empty;
+    string lastUpdatedOrderId = string.Empty;
+    bool isUpdating = false;
+
+    readonly List<string> filters = new()
+        { "All", "Placed", "Processing", "ReadyToShip", "Shipped", "Delivered" };
+
+    IEnumerable<VendorOrderDto> FilteredOrders =>
+        activeFilter == "All"
+            ? orders
+            : orders.Where(o => o.OrderStatus
+                .Equals(activeFilter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    async Task Load()
+    {
+        isLoading = true;
+        orders = await VendorSvc.GetMyOrdersAsync() ?? new List<VendorOrderDto>();
+        isLoading = false;
+    }
+
+    async Task UpdateStatus(string orderId, string status)
+    {
+        isUpdating = true;
+
+        var success = await VendorSvc.UpdateStatusAsync(orderId, status);
+
+        lastUpdatedOrderId = orderId;
+        statusMsg = success ? $"✓ Marked as {status}" : "Failed to update";
+
+        if (success)
+        {
+            var o = orders.FirstOrDefault(x => x.OrderId == orderId);
+            if (o != null)
+                o.OrderStatus = status;
+        }
+
+        isUpdating = false;
+
+        await Task.Delay(2000);
+        statusMsg = string.Empty;
+    }
+
+    string StatusClass(string status) => status?.ToLower() switch
+    {
+        "placed" => "vo-badge-placed",
+        "processing" => "vo-badge-processing",
+        "readytoship" => "vo-badge-ready",
+        "shipped" => "vo-badge-shipped",
+        "delivered" => "vo-badge-delivered",
+        "cancelled" => "vo-badge-cancelled",
+        _ => "vo-badge-placed"
+    };
+
+    string StatusIcon(string status) => status?.ToLower() switch
+    {
+        "placed" => "🕐",
+        "processing" => "📦",
+        "readytoship" => "📫",
+        "shipped" => "🚚",
+        "delivered" => "✅",
+        "cancelled" => "❌",
+        _ => "•"
+    };
+}

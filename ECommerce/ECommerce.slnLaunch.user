@@ -3,11 +3,11 @@
     "Name": "New Profile",
     "Projects": [
       {
-        "Path": "..\\ECommerceUI\\ECommerceUI.csproj",
+        "Path": "ECommerce.csproj",
         "Action": "Start"
       },
       {
-        "Path": "ECommerce.csproj",
+        "Path": "..\\ECommerceUI\\ECommerceUI.csproj",
         "Action": "Start"
       }
     ]

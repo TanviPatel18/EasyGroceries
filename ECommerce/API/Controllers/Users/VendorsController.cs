@@ -1,63 +1,48 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using ECommerce.Application.Sales.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ECommerce.Application.Users.Interfaces;
-using ECommerce.Application.Users.DTOs;
-
+using System.Security.Claims;
 
 namespace ECommerce.API.Controllers.Users
 {
-    //[Authorize(Roles = "Admin")]
     [ApiController]
-    [Route("api/admin/vendors")]
-    public class VendorsController : ControllerBase
+    [Route("api/vendor/orders")]
+    [Authorize(Roles = "Vendor")]
+    public class VendorOrderController : ControllerBase
     {
-        private readonly IVendorService _vendorService;
+        private readonly IOrderService _orderService;
+        private readonly IShipmentService _shipmentService;
 
-        public VendorsController(IVendorService vendorService)
+        public VendorOrderController(
+            IOrderService orderService,
+            IShipmentService shipmentService)
         {
-            _vendorService = vendorService;
-        }
-        [HttpGet("Search")]
-        public async Task<IActionResult> Search(string query)
-        {
-            if (string.IsNullOrWhiteSpace(query))
-                return await GetAll(); // return all if query is empty
-
-            var allVendors = await _vendorService.GetAllVendorsAsync();
-            var filtered = allVendors
-                .Where(v => v.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                         || v.Email.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            return Ok(filtered);
-        }
-        [HttpGet("GetAll")]
-        public async Task<IActionResult> GetAll()
-            => Ok(await _vendorService.GetAllVendorsAsync());
-
-        [HttpGet("GetById/{id}")]
-        public async Task<IActionResult> GetById(string id)
-            => Ok(await _vendorService.GetVendorByIdAsync(id));
-
-        [HttpPost("Create")]
-        public async Task<IActionResult> Create(CreateVendorDto dto)
-        {
-            await _vendorService.CreateVendorAsync(dto);
-            return Ok("Vendor created successfully");
+            _orderService = orderService;
+            _shipmentService = shipmentService;
         }
 
-        [HttpPut("Update/{id}")]
-        public async Task<IActionResult> Update(string id, CreateVendorDto dto)
+        // VendorId = the Customer.Id of the vendor user
+        private string GetVendorId() =>
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+        // GET api/vendor/orders
+        [HttpGet]
+        public async Task<IActionResult> GetMyOrders()
         {
-            await _vendorService.UpdateVendorAsync(id, dto);
-            return Ok("Vendor updated successfully");
+            var orders = await _orderService
+                .GetOrdersByVendorAsync(GetVendorId());
+            return Ok(orders);
         }
 
-        [HttpDelete("Delete/{id}")]
-        public async Task<IActionResult> Delete(string id)
+        // PUT api/vendor/orders/{orderId}/status
+        // Body: "Processing" or "ReadyToShip"
+        [HttpPut("{orderId}/status")]
+        public async Task<IActionResult> UpdateStatus(
+            string orderId, [FromBody] string status)
         {
-            await _vendorService.DeleteVendorAsync(id);
-            return Ok("Vendor deleted successfully");
+            await _orderService
+                .UpdateVendorOrderStatusAsync(orderId, status);
+            return Ok(new { message = $"Order marked as {status}" });
         }
     }
 }

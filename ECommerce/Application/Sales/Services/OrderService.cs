@@ -1,7 +1,10 @@
 ﻿using ECommerce.Application.Sales.DTOs;
 using ECommerce.Application.Sales.Interfaces;
+using ECommerce.Application.Users.DTOs;
+using ECommerce.Infrastructure.Repositories;
 using ECommerce.Models.Interfaces;
 using ECommerce.Models.Sales.Entities;
+using ECommerce.Models.Users.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +14,8 @@ namespace ECommerce.Application.Sales.Services
 {
     public class OrderService : IOrderService
     {
+        private readonly IVendorRepository _vendorRepository;
+
         private readonly IOrderRepository _orderRepo;
         private readonly IOrderItemRepository _orderItemRepo;
         private readonly ICartRepository _cartRepo;
@@ -23,7 +28,8 @@ namespace ECommerce.Application.Sales.Services
             ICartRepository cartRepo,
             ICartItemRepository cartItemRepo,
             IProductRepository productRepo,
-            IShipmentService shipmentService)
+            IShipmentService shipmentService,
+            IVendorRepository vendorRepository)
         {
             _orderRepo = orderRepo;
             _orderItemRepo = orderItemRepo;
@@ -31,6 +37,7 @@ namespace ECommerce.Application.Sales.Services
             _cartItemRepo = cartItemRepo;
             _productRepo = productRepo;
             _shipmentService = shipmentService;
+            _vendorRepository = vendorRepository;
         }
 
         // ✅ PLACE ORDER FROM CART WITH SHIPPING ADDRESS
@@ -58,18 +65,26 @@ namespace ECommerce.Application.Sales.Services
 
                 total += item.Quantity * product.Price;
 
+                // Update stock
                 product.StockQuantity -= item.Quantity;
                 await _productRepo.UpdateAsync(product);
 
+                // ✅ Fetch Vendor
+                var vendor = await _vendorRepository.GetByIdAsync(product.VendorId);
+
+                // ✅ Create OrderItem
                 orderItems.Add(new OrderItem
                 {
                     ProductId = item.ProductId,
                     ProductName = product.ProductName,
                     Quantity = item.Quantity,
-                    UnitPrice = product.Price
+                    UnitPrice = product.Price,
+                    VendorId = product.VendorId,
+                    VendorName = vendor?.Name ?? ""
                 });
             }
 
+            // ✅ Address
             var address = new OrderAddress
             {
                 FullName = addressDto.FullName,
@@ -81,6 +96,7 @@ namespace ECommerce.Application.Sales.Services
                 Country = "India"
             };
 
+            // ✅ Create Order
             var order = new Order
             {
                 CustomerId = customerId,
@@ -96,15 +112,29 @@ namespace ECommerce.Application.Sales.Services
             };
 
             await _orderRepo.CreateAsync(order);
-            await _shipmentService.CreateShipmentAsync(order.Id, "Standard");
 
+            // ✅ Attach OrderId to items
             foreach (var item in orderItems)
                 item.OrderId = order.Id;
 
             await _orderItemRepo.AddItemsAsync(orderItems);
+
+            // 🔥 VERY IMPORTANT: Create shipment per vendor (Amazon logic)
+            var groupedByVendor = orderItems.GroupBy(x => x.VendorId);
+
+            foreach (var group in groupedByVendor)
+            {
+                await _shipmentService.CreateShipmentAsync(
+                    order.Id,
+                    "Standard",
+                    group.Key // VendorId
+                );
+            }
+
+            // ✅ Clear cart
             await _cartItemRepo.ClearCartAsync(cart.Id);
 
-            return order.Id; // <- now correctly matches Task<string>
+            return order.Id;
         }
         // ✅ GET MY ORDERS
         public async Task<List<Order>> GetMyOrdersAsync(string customerId)
@@ -166,5 +196,60 @@ namespace ECommerce.Application.Sales.Services
         }
 
 
+
+
+        // ── Vendor: Get Orders ───────────────────────────────────────
+        public async Task<List<VendorOrderDto>> GetOrdersByVendorAsync(
+            string vendorId)
+        {
+            var vendorItems =
+                await _orderItemRepo.GetByVendorIdAsync(vendorId);
+
+            var grouped = vendorItems.GroupBy(i => i.OrderId);
+            var result = new List<VendorOrderDto>();
+
+            foreach (var group in grouped)
+            {
+                var order = await _orderRepo.GetByIdAsync(group.Key);
+                if (order == null) continue;
+
+                result.Add(new VendorOrderDto
+                {
+                    OrderId = order.Id,
+                    OrderDate = order.OrderDate,
+                    OrderStatus = order.OrderStatus,
+                    ShippingStatus = order.ShippingStatus,
+                    CustomerName = order.ShippingAddress?.FullName ?? "",
+                    CustomerPhone = order.ShippingAddress?.PhoneNumber ?? "",
+                    ShippingCity = order.ShippingAddress?.City ?? "",
+                    ShippingState = order.ShippingAddress?.State ?? "",
+                    VendorTotal = group.Sum(i => i.Quantity * i.UnitPrice),
+                    Items = group.Select(i => new VendorOrderItemDto
+                    {
+                        ProductId = i.ProductId,
+                        ProductName = i.ProductName,
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice
+                    }).ToList()
+                });
+            }
+
+            return result.OrderByDescending(x => x.OrderDate).ToList();
+        }
+
+        // ── Vendor: Update Status (Processing / ReadyToShip) ─────────
+        public async Task UpdateVendorOrderStatusAsync(
+            string orderId, string status)
+        {
+            var allowed = new[] { "Processing", "ReadyToShip" };
+            if (!allowed.Contains(status))
+                throw new Exception("Vendor can only set Processing or ReadyToShip");
+
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+
+            order.OrderStatus = status;
+            await _orderRepo.UpdateAsync(order);
+        }
     }
 }

@@ -1,0 +1,50 @@
+.vendor-layout {
+    display: flex;
+    height: 100vh;
+    font-family: Segoe UI;
+}
+
+.vendor-sidebar {
+    width: 240px;
+    background: #0f172a;
+    color: white;
+    padding: 20px;
+}
+
+.logo {
+    font-size: 22px;
+    margin-bottom: 30px;
+}
+
+.vendor-sidebar nav a {
+    display: block;
+    color: #cbd5f5;
+    text-decoration: none;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+
+    .vendor-sidebar nav a:hover {
+        background: #1e293b;
+        color: white;
+    }
+
+.vendor-main {
+    flex: 1;
+    background: #f8fafc;
+}
+
+.vendor-topbar {
+    height: 60px;
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.vendor-content {
+    padding: 30px;
+}

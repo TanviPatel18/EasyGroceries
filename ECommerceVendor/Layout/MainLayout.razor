@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+
+<div class="vendor-layout">
+
+    <div class="vendor-sidebar">
+
+        <h2 class="logo">Vendor Panel</h2>
+
+        <nav>
+            <a href="/vendor/dashboard">📊 Dashboard</a>
+            <a href="/vendor/products">📦 My Products</a>
+            <a href="/vendor/add-product">➕ Add Product</a>
+            <a href="/vendor/orders">🧾 Orders</a>
+            <a href="/vendor/reviews">⭐ Reviews</a>
+            <a href="/vendor/earnings">💰 Earnings</a>
+            <a href="/vendor/settings">⚙ Settings</a>
+        </nav>
+
+    </div>
+
+
+    <div class="vendor-main">
+
+        <div class="vendor-topbar">
+            <div class="title">Vendor Dashboard</div>
+            <div class="user">👤 Vendor</div>
+        </div>
+
+        <div class="vendor-content">
+            @Body
+        </div>
+
+    </div>
+
+</div>

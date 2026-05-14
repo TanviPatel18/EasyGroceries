@@ -2,11 +2,12 @@ using ECommerceUI;
 using ECommerceUI.Services;
 using ECommerceUI.Services.Customer;
 using ECommerceUI.Services.Order;
+using ECommerceUI.Services.other;
+
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Text.Json;
-using ECommerceUI.Services.other;
 using System.Text.Json.Serialization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -51,7 +52,7 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<AddressService>();
 //builder.Services.AddScoped<RecentProductService>();
-
+builder.Services.AddScoped<DashboardService>();
 
 
 

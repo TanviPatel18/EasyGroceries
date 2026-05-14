@@ -34,7 +34,7 @@ namespace ECommerce.API.Controllers.Sales
         public async Task<IActionResult> MyOrders()
         {
             var orders = await _service.GetMyOrdersAsync(GetCustomerId());
-            return Ok(orders);
+            return Ok(orders); // service now returns List<OrderDto> with full data
         }
 
         // ── Get single order (customer) ──────────────────────────────────
@@ -47,15 +47,14 @@ namespace ECommerce.API.Controllers.Sales
         }
 
         // ── Get items for an order ───────────────────────────────────────
-        [HttpGet("{orderId}/items")]                              // ← NEW
+        [HttpGet("{orderId}/items")]
         public async Task<IActionResult> GetOrderItems(string orderId)
         {
-            // Verify this order belongs to the current customer
             var order = await _service.GetOrderByIdAsync(GetCustomerId(), orderId);
             if (order == null) return NotFound("Order not found");
 
             var items = await _service.GetOrderItemsAsync(orderId);
-            return Ok(items);
+            return Ok(items); // service maps UnitPrice → Price
         }
 
         // ── Cancel order ─────────────────────────────────────────────────
@@ -76,8 +75,10 @@ namespace ECommerce.API.Controllers.Sales
 
             return Ok(new { message = "Order cancelled successfully" });
         }
+
+        
+
     }
 
-    // Helper DTO for admin status update
   
 }
